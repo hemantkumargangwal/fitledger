@@ -1,0 +1,1348 @@
+import { useState, useEffect } from 'react';
+import Layout from '../components/Layout';
+import { Plus, Search, Filter, DollarSign, TrendingUp, Calendar, CreditCard, Smartphone, Wallet, MoreVertical, ArrowUpRight, ArrowDownRight, Download, Clock, CheckCircle, AlertCircle, Receipt, User, ArrowUpDown } from 'lucide-react';
+import { PaymentsPageSkeleton } from '../components/SkeletonLoader';
+import axios from 'axios';
+
+const Payments = () => {
+  const [payments, setPayments] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [revenueSummary, setRevenueSummary] = useState({
+    totalRevenue: 0,
+    totalPayments: 0,
+    averagePayment: 0,
+    revenueByType: []
+  });
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [customDateRange, setCustomDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [showDropdown, setShowDropdown] = useState(null);
+
+  const [formData, setFormData] = useState({
+    memberId: '',
+    amount: '',
+    paymentType: 'cash',
+    description: ''
+  });
+
+  useEffect(() => {
+    fetchPayments();
+    fetchMembers();
+    fetchRevenueSummary();
+  }, [currentPage, searchTerm, paymentTypeFilter, dateFilter, customDateRange]);
+
+  const fetchPayments = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: 10
+      });
+      
+      if (searchTerm) params.append('search', searchTerm);
+      if (paymentTypeFilter !== 'all') params.append('paymentType', paymentTypeFilter);
+      if (dateFilter !== 'all') {
+        params.append('dateFilter', dateFilter);
+        if (dateFilter === 'custom' && customDateRange.startDate && customDateRange.endDate) {
+          params.append('startDate', customDateRange.startDate);
+          params.append('endDate', customDateRange.endDate);
+        }
+      }
+
+      const response = await axios.get(`/api/payments?${params}`);
+      setPayments(response.data.payments || []);
+      setTotalPages(response.data.totalPages || 1);
+    } catch (error) {
+      console.error('Error fetching payments:', error);
+      // Set mock data for demo
+      setMockPayments();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const setMockPayments = () => {
+    const mockPayments = [
+      {
+        _id: '1',
+        memberId: '1',
+        memberName: 'John Doe',
+        amount: 150,
+        paymentType: 'cash',
+        description: 'Monthly membership fee',
+        date: '2024-06-15',
+        status: 'completed',
+        isLatest: true
+      },
+      {
+        _id: '2',
+        memberId: '2',
+        memberName: 'Jane Smith',
+        amount: 200,
+        paymentType: 'card',
+        description: 'Quarterly membership',
+        date: '2024-06-14',
+        status: 'completed',
+        isLatest: true
+      },
+      {
+        _id: '3',
+        memberId: '3',
+        memberName: 'Mike Johnson',
+        amount: 100,
+        paymentType: 'upi',
+        description: 'Monthly renewal',
+        date: '2024-06-13',
+        status: 'completed',
+        isLatest: false
+      },
+      {
+        _id: '4',
+        memberId: '1',
+        memberName: 'John Doe',
+        amount: 50,
+        paymentType: 'cash',
+        description: 'Personal training session',
+        date: '2024-06-10',
+        status: 'completed',
+        isLatest: false
+      }
+    ];
+    setPayments(mockPayments);
+    
+    const mockRevenue = {
+      totalRevenue: 5000,
+      totalPayments: 25,
+      averagePayment: 200,
+      revenueByType: [
+        { type: 'cash', amount: 2000, percentage: 40 },
+        { type: 'card', amount: 2500, percentage: 50 },
+        { type: 'upi', amount: 500, percentage: 10 }
+      ]
+    };
+    setRevenueSummary(mockRevenue);
+  };
+
+  const fetchMembers = async () => {
+    try {
+      const response = await axios.get('/api/members?limit=1000');
+      setMembers(response.data.members || []);
+    } catch (error) {
+      console.error('Error fetching members:', error);
+      // Set mock members for demo
+      setMembers([
+        { _id: '1', name: 'John Doe', email: 'john@example.com' },
+        { _id: '2', name: 'Jane Smith', email: 'jane@example.com' },
+        { _id: '3', name: 'Mike Johnson', email: 'mike@example.com' }
+      ]);
+    }
+  };
+
+  const fetchRevenueSummary = async () => {
+    try {
+      const response = await axios.get('/api/payments/revenue?period=month');
+      setRevenueSummary(response.data);
+    } catch (error) {
+      console.error('Error fetching revenue summary:', error);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post('/api/payments', formData);
+      
+      setShowModal(false);
+      setFormData({
+        memberId: '',
+        amount: '',
+        paymentType: 'cash',
+        description: ''
+      });
+      fetchPayments();
+      fetchRevenueSummary();
+    } catch (error) {
+      console.error('Error adding payment:', error);
+    }
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getPaymentTypeColor = (type) => {
+    const colors = {
+      cash: 'text-success-600 bg-success-100',
+      card: 'text-blue-600 bg-blue-100',
+      upi: 'text-purple-600 bg-purple-100'
+    };
+    return colors[type] || 'text-gray-600 bg-gray-100';
+  };
+
+  const getPaymentTypeIcon = (type) => {
+    const icons = {
+      cash: Wallet,
+      card: CreditCard,
+      upi: Smartphone
+    };
+    return icons[type] || Wallet;
+  };
+
+  const getPaymentTypeLabel = (type) => {
+    const labels = {
+      cash: 'Cash',
+      card: 'Card',
+      upi: 'UPI'
+    };
+    return labels[type] || type;
+  };
+
+  const getGrowthIndicator = (current, previous) => {
+    if (!previous) return null;
+    const growth = ((current - previous) / previous) * 100;
+    return {
+      value: Math.abs(growth).toFixed(1),
+      isPositive: growth >= 0,
+      icon: growth >= 0 ? ArrowUpRight : ArrowDownRight
+    };
+  };
+
+  const isRecentPayment = (dateString) => {
+    const paymentDate = new Date(dateString);
+    const today = new Date();
+    const diffTime = today - paymentDate;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 2;
+  };
+
+  const filteredPayments = payments.filter(payment => {
+    const matchesSearch = payment.memberName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         payment.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         payment.amount.toString().includes(searchTerm);
+    
+    const matchesType = paymentTypeFilter === 'all' || payment.paymentType === paymentTypeFilter;
+    
+    let matchesDate = true;
+    if (dateFilter !== 'all') {
+      const paymentDate = new Date(payment.date);
+      const today = new Date();
+      
+      switch (dateFilter) {
+        case 'today':
+          matchesDate = paymentDate.toDateString() === today.toDateString();
+          break;
+        case 'week':
+          const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+          matchesDate = paymentDate >= weekAgo;
+          break;
+        case 'month':
+          const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+          matchesDate = paymentDate >= monthAgo;
+          break;
+        case 'custom':
+          if (customDateRange.startDate && customDateRange.endDate) {
+            const start = new Date(customDateRange.startDate);
+            const end = new Date(customDateRange.endDate);
+            matchesDate = paymentDate >= start && paymentDate <= end;
+          }
+          break;
+      }
+    }
+    
+    return matchesSearch && matchesType && matchesDate;
+  });
+
+  if (loading) {
+    return (
+      <Layout>
+        <PaymentsPageSkeleton />
+      </Layout>
+    );
+  }
+
+  const revenueGrowth = getGrowthIndicator(revenueSummary.totalRevenue, revenueSummary.totalRevenue - 500);
+
+  return (
+    <Layout>
+      <div className="space-y-8 animate-fade-in">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Payments</h1>
+            <p className="text-gray-600 mt-1">Manage payments and track revenue</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="btn-secondary">
+              <Download className="w-4 h-4" />
+              Export
+            </button>
+            <button
+              onClick={() => setShowModal(true)}
+              className="btn-primary"
+            >
+              <Plus className="w-4 h-4" />
+              Record Payment
+            </button>
+          </div>
+        </div>
+
+        {/* Revenue Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="card-gradient p-6 group hover:shadow-soft-lg transition-all duration-300">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-soft group-hover:shadow-glow transition-all duration-300">
+                <DollarSign className="w-6 h-6 text-white" />
+              </div>
+              {revenueGrowth && (
+                <div className={`flex items-center text-sm ${
+                  revenueGrowth.isPositive ? 'text-success-600' : 'text-danger-600'
+                }`}>
+                  <revenueGrowth.icon className="w-4 h-4 mr-1" />
+                  {revenueGrowth.value}%
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">Total Revenue</p>
+              <p className="text-3xl font-bold text-gray-900">{formatCurrency(revenueSummary.totalRevenue)}</p>
+              <p className="text-sm text-gray-500 mt-2">Last 30 days</p>
+            </div>
+          </div>
+
+          <div className="card-gradient p-6 group hover:shadow-soft-lg transition-all duration-300">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-soft group-hover:shadow-glow transition-all duration-300">
+                <Receipt className="w-6 h-6 text-white" />
+              </div>
+              <div className="badge-primary">
+                <TrendingUp className="w-3 h-3 mr-1" />
+                Active
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">Total Payments</p>
+              <p className="text-3xl font-bold text-gray-900">{revenueSummary.totalPayments}</p>
+              <p className="text-sm text-gray-500 mt-2">Transactions</p>
+            </div>
+          </div>
+
+          <div className="card-gradient p-6 group hover:shadow-soft-lg transition-all duration-300">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-soft group-hover:shadow-glow transition-all duration-300">
+                <TrendingUp className="w-6 h-6 text-white" />
+              </div>
+              <div className="badge-success">
+                <ArrowUpRight className="w-3 h-3 mr-1" />
+                Avg
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">Average Payment</p>
+              <p className="text-3xl font-bold text-gray-900">{formatCurrency(revenueSummary.averagePayment)}</p>
+              <p className="text-sm text-gray-500 mt-2">Per transaction</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Payment Type Breakdown */}
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Distribution</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {revenueSummary.revenueByType.map((type, index) => {
+              const Icon = getPaymentTypeIcon(type.type);
+              return (
+                <div key={index} className="text-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                  <div className={`w-12 h-12 ${getPaymentTypeColor(type.type)} rounded-xl flex items-center justify-center mx-auto mb-3`}>
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900">{formatCurrency(type.amount)}</div>
+                  <div className="text-sm text-gray-600 mb-1">{getPaymentTypeLabel(type.type)}</div>
+                  <div className="text-xs text-gray-500">{type.percentage}% of total</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="card p-4">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search payments by member, description, or amount..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="input pl-10"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-gray-400" />
+                <select
+                  value={paymentTypeFilter}
+                  onChange={(e) => setPaymentTypeFilter(e.target.value)}
+                  className="input"
+                >
+                  <option value="all">All Payment Types</option>
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                  <option value="upi">UPI</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-400" />
+                <select
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  className="input"
+                >
+                  <option value="all">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          {/* Custom Date Range */}
+          {dateFilter === 'custom' && (
+            <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-200">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">From:</label>
+                <input
+                  type="date"
+                  value={customDateRange.startDate}
+                  onChange={(e) => setCustomDateRange({...customDateRange, startDate: e.target.value})}
+                  className="input"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">To:</label>
+                <input
+                  type="date"
+                  value={customDateRange.endDate}
+                  onChange={(e) => setCustomDateRange({...customDateRange, endDate: e.target.value})}
+                  className="input"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Payments Table */}
+        <div className="card">
+          <div className="overflow-x-auto">
+            <div className="min-w-full">
+              <div className="divide-y divide-gray-100">
+                {/* Table Header */}
+                <div className="table-header px-6 py-4">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-8"></div>
+                    <div className="flex-1">Member</div>
+                    <div className="w-32">Amount</div>
+                    <div className="w-28">Type</div>
+                    <div className="w-32">Date</div>
+                    <div className="flex-1">Description</div>
+                    <div className="w-20">Actions</div>
+                  </div>
+                </div>
+
+                {/* Table Body */}
+                <div className="divide-y divide-gray-100">
+                  {filteredPayments.map((payment) => {
+                    const PaymentIcon = getPaymentTypeIcon(payment.paymentType);
+                    const isRecent = isRecentPayment(payment.date);
+                    
+                    return (
+                      <div key={payment._id} className={`table-row px-6 py-4 ${isRecent ? 'bg-success-50' : ''}`}>
+                        <div className="flex items-center gap-4 flex-1">
+                          {/* Status Indicator */}
+                          <div className="relative">
+                            {payment.isLatest ? (
+                              <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                                <CheckCircle className="w-4 h-4 text-primary-600" />
+                              </div>
+                            ) : isRecent ? (
+                              <div className="w-8 h-8 bg-success-100 rounded-full flex items-center justify-center">
+                                <Clock className="w-4 h-4 text-success-600" />
+                              </div>
+                            ) : (
+                              <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Member Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <div className="font-medium text-gray-900 truncate">
+                                {payment.memberName || 'Unknown Member'}
+                              </div>
+                              {payment.isLatest && (
+                                <span className="badge-primary text-xs">Latest</span>
+                              )}
+                              {isRecent && !payment.isLatest && (
+                                <span className="badge-success text-xs">Recent</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                              <User className="w-3 h-3" />
+                              <span>ID: {payment.memberId}</span>
+                            </div>
+                          </div>
+
+                          {/* Amount */}
+                          <div className="w-32">
+                            <div className="text-lg font-semibold text-gray-900">
+                              {formatCurrency(payment.amount)}
+                            </div>
+                          </div>
+
+                          {/* Payment Type */}
+                          <div className="w-28">
+                            <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getPaymentTypeColor(payment.paymentType)}`}>
+                              <PaymentIcon className="w-3 h-3" />
+                              {getPaymentTypeLabel(payment.paymentType)}
+                            </div>
+                          </div>
+
+                          {/* Date */}
+                          <div className="w-32">
+                            <div className="text-sm text-gray-900">
+                              {formatDate(payment.date)}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {isRecent ? 'Recent' : 'Completed'}
+                            </div>
+                          </div>
+
+                          {/* Description */}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-gray-900 truncate">
+                              {payment.description || 'No description'}
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="w-20">
+                            <div className="relative">
+                              <button
+                                onClick={() => setShowDropdown(showDropdown === payment._id ? null : payment._id)}
+                                className="btn-ghost p-1"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
+
+                              {/* Dropdown */}
+                              {showDropdown === payment._id && (
+                                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-soft-lg border border-gray-200 overflow-hidden z-10">
+                                  <button className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                    <Receipt className="w-4 h-4" />
+                                    View Receipt
+                                  </button>
+                                  <button className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                    <Download className="w-4 h-4" />
+                                    Download
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {filteredPayments.length === 0 && (
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Receipt className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No payments found</h3>
+                  <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+                    {searchTerm || paymentTypeFilter !== 'all' || dateFilter !== 'all'
+                      ? 'Try adjusting your search or filters to find what you\'re looking for.'
+                      : 'Get started by recording your first payment.'
+                    }
+                  </p>
+                  <button
+                    onClick={() => setShowModal(true)}
+                    className="btn-primary"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Record First Payment
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+              <div className="text-sm text-gray-600">
+                Showing {((currentPage - 1) * 10) + 1} to {Math.min(currentPage * 10, filteredPayments.length)} of {filteredPayments.length} payments
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="btn-secondary px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    const pageNum = i + 1;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                          currentPage === pageNum
+                            ? 'bg-primary-600 text-white'
+                            : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="btn-secondary px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Record Payment Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" onClick={() => setShowModal(false)}>
+              <div className="absolute inset-0 bg-gray-900 opacity-50 backdrop-blur-sm"></div>
+            </div>
+
+            <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-soft-lg transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full animate-slide-up">
+              <form onSubmit={handleSubmit}>
+                <div className="bg-white px-6 pt-6 pb-4 sm:pb-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900">Record New Payment</h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(false)}
+                      className="btn-ghost p-2"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Select Member *
+                      </label>
+                      <select
+                        required
+                        value={formData.memberId}
+                        onChange={(e) => setFormData({...formData, memberId: e.target.value})}
+                        className="input"
+                      >
+                        <option value="">Choose a member...</option>
+                        {members.map(member => (
+                          <option key={member._id} value={member._id}>
+                            {member.name} ({member.email})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Amount *
+                      </label>
+                      <div className="relative">
+                        <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <input
+                          type="number"
+                          required
+                          min="0"
+                          step="0.01"
+                          value={formData.amount}
+                          onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                          className="input pl-10"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Payment Type *
+                      </label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {['cash', 'card', 'upi'].map(type => {
+                          const Icon = getPaymentTypeIcon(type);
+                          return (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => setFormData({...formData, paymentType: type})}
+                              className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${
+                                formData.paymentType === type
+                                  ? 'border-primary-500 bg-primary-50'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              <Icon className={`w-6 h-6 ${
+                                formData.paymentType === type ? 'text-primary-600' : 'text-gray-400'
+                              }`} />
+                              <span className={`text-sm font-medium ${
+                                formData.paymentType === type ? 'text-primary-600' : 'text-gray-600'
+                              }`}>
+                                {getPaymentTypeLabel(type)}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Description
+                      </label>
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                        className="input"
+                        rows={3}
+                        placeholder="Enter payment description (optional)"
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 px-6 py-4 sm:px-6 sm:flex sm:flex-row-reverse gap-3">
+                  <button
+                    type="submit"
+                    className="btn-primary flex-1"
+                  >
+                    Record Payment
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModal(false);
+                      setFormData({
+                        memberId: '',
+                        amount: '',
+                        paymentType: 'cash',
+                        description: ''
+                      });
+                    }}
+                    className="btn-secondary flex-1"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+    </Layout>
+  );
+};
+
+export default Payments;
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getPaymentTypeColor = (type) => {
+    const colors = {
+      cash: 'badge-success',
+      upi: 'badge-primary',
+      card: 'badge-warning'
+    };
+    return colors[type] || 'badge-gray';
+  };
+
+  const getPaymentTypeIcon = (type) => {
+    const icons = {
+      cash: DollarSign,
+      upi: Smartphone,
+      card: CreditCard
+    };
+    return icons[type] || Wallet;
+  };
+
+  const getPaymentTypeLabel = (type) => {
+    const labels = {
+      cash: 'Cash',
+      upi: 'UPI',
+      card: 'Card'
+    };
+    return labels[type] || type;
+  };
+
+  const getGrowthIndicator = (current, previous) => {
+    if (!previous) return null;
+    const growth = ((current - previous) / previous) * 100;
+    return {
+      value: Math.abs(growth).toFixed(1),
+      isPositive: growth >= 0,
+      icon: growth >= 0 ? ArrowUpRight : ArrowDownRight
+    };
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <PaymentsPageSkeleton />
+      </Layout>
+    );
+  }
+
+  // Mock growth data for demo
+  const revenueGrowth = getGrowthIndicator(revenueSummary.totalRevenue, revenueSummary.totalRevenue - 2000);
+
+  return (
+    <Layout>
+      <div className="space-y-8 animate-fade-in">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Payments</h1>
+            <p className="text-gray-600 mt-1">Track payments and revenue for your gym</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="btn-secondary">
+              <Download className="w-4 h-4" />
+              Export
+            </button>
+            <button
+              onClick={() => setShowModal(true)}
+              className="btn-primary"
+            >
+              <Plus className="w-4 h-4" />
+              Add Payment
+            </button>
+          </div>
+        </div>
+
+        {/* Revenue Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="card-gradient p-6 group hover:shadow-soft-lg transition-all duration-300">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-success-500 to-success-600 rounded-xl flex items-center justify-center shadow-soft group-hover:shadow-glow transition-all duration-300">
+                  <DollarSign className="w-6 h-6 text-white" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                  <p className="text-3xl font-bold text-gray-900 mt-1">{formatCurrency(revenueSummary.totalRevenue)}</p>
+                  {revenueGrowth && (
+                    <div className={`flex items-center mt-2 text-sm ${
+                      revenueGrowth.isPositive ? 'text-success-600' : 'text-danger-600'
+                    }`}>
+                      <revenueGrowth.icon className="w-4 h-4 mr-1" />
+                      {revenueGrowth.value}% from last month
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card-gradient p-6 group hover:shadow-soft-lg transition-all duration-300">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-soft group-hover:shadow-glow transition-all duration-300">
+                  <TrendingUp className="w-6 h-6 text-white" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Payments</p>
+                  <p className="text-3xl font-bold text-gray-900 mt-1">{revenueSummary.totalPayments}</p>
+                  <div className="mt-2">
+                    <span className="badge-primary">
+                      {revenueSummary.totalPayments > 0 ? 'Active' : 'No payments'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card-gradient p-6 group hover:shadow-soft-lg transition-all duration-300">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-warning-500 to-warning-600 rounded-xl flex items-center justify-center shadow-soft group-hover:shadow-glow transition-all duration-300">
+                  <DollarSign className="w-6 h-6 text-white" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Average Payment</p>
+                  <p className="text-3xl font-bold text-gray-900 mt-1">
+                    {revenueSummary.totalPayments > 0 
+                      ? formatCurrency(revenueSummary.totalRevenue / revenueSummary.totalPayments)
+                      : formatCurrency(0)
+                    }
+                  </p>
+                  <div className="mt-2">
+                    <span className="badge-warning">
+                      Per transaction
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Payment Type Breakdown */}
+        {revenueSummary.revenueByType.length > 0 && (
+          <div className="card p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Revenue by Payment Type</h3>
+                <p className="text-sm text-gray-500">Breakdown of payment methods</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {revenueSummary.revenueByType.map((item) => {
+                const Icon = getPaymentTypeIcon(item._id);
+                return (
+                  <div key={item._id} className="card-hover p-4 text-center">
+                    <div className={`inline-flex p-3 rounded-xl mb-3 ${
+                      item._id === 'cash' ? 'bg-success-100' :
+                      item._id === 'upi' ? 'bg-primary-100' :
+                      'bg-warning-100'
+                    }`}>
+                      <Icon className={`w-6 h-6 ${
+                        item._id === 'cash' ? 'text-success-600' :
+                        item._id === 'upi' ? 'text-primary-600' :
+                        'text-warning-600'
+                      }`} />
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900">{formatCurrency(item.total)}</div>
+                    <div className="text-sm text-gray-500 mb-1">{getPaymentTypeLabel(item._id)}</div>
+                    <div className="text-xs text-gray-400">{item.count} payments</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="card p-4">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search payments by member name or amount..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="input pl-10"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-gray-400" />
+                <select
+                  value={paymentTypeFilter}
+                  onChange={(e) => setPaymentTypeFilter(e.target.value)}
+                  className="input"
+                >
+                  <option value="all">All Types</option>
+                  <option value="cash">Cash</option>
+                  <option value="upi">UPI</option>
+                  <option value="card">Card</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Payments Table */}
+        <div className="card">
+          <div className="overflow-x-auto">
+            <div className="min-w-full">
+              <div className="divide-y divide-gray-100">
+                {/* Table Header */}
+                <div className="table-header px-6 py-4">
+                  <div className="flex items-center justify-between text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="flex-1">Member</div>
+                      <div className="w-24">Amount</div>
+                      <div className="w-20">Type</div>
+                      <div className="w-24">Date</div>
+                      <div className="flex-1">Description</div>
+                      <div className="w-16">Actions</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table Body */}
+                <div className="divide-y divide-gray-100">
+                  {payments.map((payment) => {
+                    const Icon = getPaymentTypeIcon(payment.paymentType);
+                    return (
+                      <div key={payment._id} className="table-row px-6 py-4">
+                        <div className="flex items-center gap-4 flex-1">
+                          {/* Member Avatar */}
+                          <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center shadow-soft">
+                            <span className="text-white font-semibold text-sm">
+                              {payment.memberId?.name?.charAt(0).toUpperCase() || '?'}
+                            </span>
+                          </div>
+
+                          {/* Member Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900 truncate">
+                              {payment.memberId?.name || 'Unknown Member'}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {payment.memberId?.phone || 'No phone'}
+                            </div>
+                          </div>
+
+                          {/* Amount */}
+                          <div className="w-24">
+                            <div className="text-lg font-semibold text-gray-900">
+                              {formatCurrency(payment.amount)}
+                            </div>
+                          </div>
+
+                          {/* Payment Type */}
+                          <div className="w-20">
+                            <div className="flex items-center gap-2">
+                              <div className={`p-1.5 rounded-lg ${
+                                payment.paymentType === 'cash' ? 'bg-success-100' :
+                                payment.paymentType === 'upi' ? 'bg-primary-100' :
+                                'bg-warning-100'
+                              }`}>
+                                <Icon className={`w-4 h-4 ${
+                                  payment.paymentType === 'cash' ? 'text-success-600' :
+                                  payment.paymentType === 'upi' ? 'text-primary-600' :
+                                  'text-warning-600'
+                                }`} />
+                              </div>
+                              <span className={getPaymentTypeColor(payment.paymentType)}>
+                                {getPaymentTypeLabel(payment.paymentType)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Date */}
+                          <div className="w-24">
+                            <div className="text-sm text-gray-900">
+                              {formatDate(payment.paymentDate)}
+                            </div>
+                          </div>
+
+                          {/* Description */}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-gray-900 truncate">
+                              {payment.description || 'No description'}
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="w-16">
+                            <div className="relative">
+                              <button
+                                onClick={() => setShowDropdown(showDropdown === payment._id ? null : payment._id)}
+                                className="btn-ghost p-1"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
+
+                              {/* Dropdown */}
+                              {showDropdown === payment._id && (
+                                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-soft-lg border border-gray-200 overflow-hidden z-10">
+                                  <button className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                    <Download className="w-4 h-4" />
+                                    Download Receipt
+                                  </button>
+                                  <button className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                    <Calendar className="w-4 h-4" />
+                                    View Details
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {payments.length === 0 && (
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <CreditCard className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No payments found</h3>
+                  <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+                    {searchTerm || paymentTypeFilter !== 'all' 
+                      ? 'Try adjusting your search or filters to find what you\'re looking for.'
+                      : 'Get started by adding your first payment record.'
+                    }
+                  </p>
+                  <button
+                    onClick={() => setShowModal(true)}
+                    className="btn-primary"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Your First Payment
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+              <div className="text-sm text-gray-600">
+                Showing {((currentPage - 1) * 10) + 1} to {Math.min(currentPage * 10, payments.length)} of {payments.length} payments
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="btn-secondary px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    const pageNum = i + 1;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                          currentPage === pageNum
+                            ? 'bg-primary-600 text-white'
+                            : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="btn-secondary px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Add Payment Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" onClick={() => setShowModal(false)}>
+              <div className="absolute inset-0 bg-gray-900 opacity-50 backdrop-blur-sm"></div>
+            </div>
+
+            <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-soft-lg transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full animate-slide-up">
+              <form onSubmit={handleSubmit}>
+                <div className="bg-white px-6 pt-6 pb-4 sm:pb-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      Add New Payment
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(false)}
+                      className="btn-ghost p-2"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Select Member *
+                      </label>
+                      <select
+                        required
+                        value={formData.memberId}
+                        onChange={(e) => setFormData({...formData, memberId: e.target.value})}
+                        className="input"
+                      >
+                        <option value="">Choose a member</option>
+                        {members.map((member) => (
+                          <option key={member._id} value={member._id}>
+                            {member.name} - {member.phone}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Payment Amount ($) *
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        step="0.01"
+                        value={formData.amount}
+                        onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                        className="input"
+                        placeholder="Enter amount"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Payment Type *
+                      </label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { value: 'cash', label: 'Cash', icon: DollarSign, color: 'success' },
+                          { value: 'upi', label: 'UPI', icon: Smartphone, color: 'primary' },
+                          { value: 'card', label: 'Card', icon: CreditCard, color: 'warning' }
+                        ].map((type) => {
+                          const Icon = type.icon;
+                          return (
+                            <button
+                              key={type.value}
+                              type="button"
+                              onClick={() => setFormData({...formData, paymentType: type.value})}
+                              className={`relative p-3 rounded-xl border-2 transition-all ${
+                                formData.paymentType === type.value
+                                  ? `border-${type.color}-500 bg-${type.color}-50`
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              <Icon className={`w-5 h-5 mx-auto mb-1 ${
+                                formData.paymentType === type.value
+                                  ? `text-${type.color}-600`
+                                  : 'text-gray-400'
+                              }`} />
+                              <div className={`text-xs font-medium ${
+                                formData.paymentType === type.value
+                                  ? `text-${type.color}-700`
+                                  : 'text-gray-600'
+                              }`}>
+                                {type.label}
+                              </div>
+                              {formData.paymentType === type.value && (
+                                <div className={`absolute top-2 right-2 w-2 h-2 bg-${type.color}-500 rounded-full`}></div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Description
+                      </label>
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                        className="input"
+                        rows={3}
+                        placeholder="Add a note about this payment (optional)"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 px-6 py-4 sm:px-6 sm:flex sm:flex-row-reverse gap-3">
+                  <button
+                    type="submit"
+                    className="btn-primary flex-1"
+                  >
+                    Add Payment
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModal(false);
+                      setFormData({
+                        memberId: '',
+                        amount: '',
+                        paymentType: 'cash',
+                        description: ''
+                      });
+                    }}
+                    className="btn-secondary flex-1"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+    </Layout>
+  );
+};
+
+export default Payments;

@@ -1,0 +1,19 @@
+{
+  "name": "fitledger",
+  "version": "1.0.0",
+  "description": "Gym Management SaaS Application",
+  "main": "server/index.js",
+  "scripts": {
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm run dev",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "build": "cd client && npm run build",
+    "start": "cd server && npm start"
+  },
+  "keywords": ["gym", "management", "saas", "mern"],
+  "author": "FitLedger Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
