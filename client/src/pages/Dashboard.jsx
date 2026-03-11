@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import Layout from '../layouts/Layout';
+import { Link } from 'react-router-dom';
 import { Users, TrendingUp, CreditCard, AlertCircle, ArrowUpRight, ArrowDownRight, Calendar, DollarSign, Activity, PieChart as PieChartIcon, RefreshCw } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { DashboardSkeleton } from '../components/SkeletonLoader';
@@ -116,15 +116,6 @@ const Dashboard = () => {
     ]);
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -150,8 +141,8 @@ const Dashboard = () => {
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 rounded-lg shadow-soft-lg border border-gray-200">
-          <p className="text-sm font-medium text-gray-900">{label}</p>
+        <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-200">
+          <p className="text-sm font-medium text-slate-800">{label}</p>
           {payload.map((entry, index) => (
             <p key={index} className="text-sm" style={{ color: entry.color }}>
               {entry.name}: {entry.name === 'Revenue' ? formatCurrency(entry.value) : entry.value}
@@ -183,11 +174,7 @@ const Dashboard = () => {
   };
 
   if (loading) {
-    return (
-      <Layout>
-        <DashboardSkeleton />
-      </Layout>
-    );
+    return <DashboardSkeleton />;
   }
 
   // Calculate growth indicators (mock data for demo)
@@ -195,29 +182,28 @@ const Dashboard = () => {
   const revenueGrowth = getGrowthIndicator(stats.totalRevenue, stats.totalRevenue - 2000);
 
   return (
-    <Layout>
-      <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 animate-fade-in">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-            <p className="text-gray-600 mt-1">Welcome back! Here's what's happening with your gym today.</p>
+            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Dashboard</h1>
+            <p className="text-slate-500 mt-1">Welcome back! Here&apos;s what&apos;s happening with your gym today.</p>
           </div>
-          <div className="flex items-center gap-3">
-            <button 
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
               onClick={handleRefresh}
-              className={`btn-secondary group relative ${refreshing ? 'animate-spin' : ''}`}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-50"
               disabled={refreshing}
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
               {refreshing ? 'Updating...' : 'Refresh'}
             </button>
-            <button className="btn-secondary group">
-              <Calendar className="w-4 h-4 group-hover:animate-bounce-soft" />
+            <button className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all">
+              <Calendar className="w-4 h-4" />
               Last 30 days
             </button>
-            <button className="btn-primary group">
-              <TrendingUp className="w-4 h-4 group-hover:translate-y-[-2px] transition-transform" />
+            <button className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all">
+              <TrendingUp className="w-4 h-4" />
               View Reports
             </button>
           </div>
@@ -237,38 +223,41 @@ const Dashboard = () => {
         )}
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="card-gradient p-6 group hover:shadow-soft-lg hover:scale-[1.02] transition-all duration-300 animate-slide-up" style={{ animationDelay: '100ms' }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 animate-slide-up" style={{ animationDelay: '100ms' }}>
             <div className="flex items-start justify-between">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-soft group-hover:shadow-glow group-hover:scale-110 transition-all duration-300">
-                  <Users className="w-6 h-6 text-white group-hover:animate-bounce-soft" />
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                  <Users className="w-6 h-6 text-white" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Members</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1 group-hover:scale-105 transition-transform">{stats.totalMembers}</p>
-                  {memberGrowth && (
-                    <div className={`flex items-center mt-2 text-sm ${
-                      memberGrowth.isPositive ? 'text-success-600' : 'text-danger-600'
-                    }`}>
-                      <memberGrowth.icon className="w-4 h-4 mr-1 group-hover:animate-bounce-soft" />
-                      {memberGrowth.value}% from last month
-                    </div>
-                  )}
+                  <p className="text-sm font-medium text-slate-500">Total Members</p>
+                  <p className="text-2xl font-bold text-slate-800 mt-1">{stats.totalMembers}</p>
+                  {memberGrowth && (() => {
+                    const GrowthIcon = memberGrowth.icon;
+                    return (
+                      <div className={`flex items-center mt-2 text-sm ${
+                        memberGrowth.isPositive ? 'text-success-600' : 'text-danger-600'
+                      }`}>
+                        <GrowthIcon className="w-4 h-4 mr-1 group-hover:animate-bounce-soft" />
+                        {memberGrowth.value}% from last month
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="card-gradient p-6 group hover:shadow-soft-lg hover:scale-[1.02] transition-all duration-300 animate-slide-up" style={{ animationDelay: '200ms' }}>
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 animate-slide-up" style={{ animationDelay: '200ms' }}>
             <div className="flex items-start justify-between">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-success-500 to-success-600 rounded-xl flex items-center justify-center shadow-soft group-hover:shadow-glow group-hover:scale-110 transition-all duration-300">
-                  <Activity className="w-6 h-6 text-white group-hover:animate-pulse-soft" />
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                  <Activity className="w-6 h-6 text-white" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Active Members</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1 group-hover:scale-105 transition-transform">{stats.activeMembers}</p>
+                  <p className="text-sm font-medium text-slate-500">Active Members</p>
+                  <p className="text-2xl font-bold text-slate-800 mt-1">{stats.activeMembers}</p>
                   <div className="mt-2">
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                       <span>Activity rate</span>
@@ -286,15 +275,15 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="card-gradient p-6 group hover:shadow-soft-lg hover:scale-[1.02] transition-all duration-300 animate-slide-up" style={{ animationDelay: '300ms' }}>
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 animate-slide-up" style={{ animationDelay: '300ms' }}>
             <div className="flex items-start justify-between">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-warning-500 to-warning-600 rounded-xl flex items-center justify-center shadow-soft group-hover:shadow-glow group-hover:scale-110 transition-all duration-300">
-                  <AlertCircle className="w-6 h-6 text-white group-hover:animate-wiggle" />
+                <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
+                  <AlertCircle className="w-6 h-6 text-white" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Expiring Soon</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1 group-hover:scale-105 transition-transform">{stats.expiringSoon}</p>
+                  <p className="text-sm font-medium text-slate-500">Expiring Soon</p>
+                  <p className="text-2xl font-bold text-slate-800 mt-1">{stats.expiringSoon}</p>
                   <div className="mt-2">
                     <span className={`badge-warning group-hover:animate-pulse-soft ${
                       stats.expiringSoon > 0 ? 'animate-shake' : ''
@@ -307,23 +296,26 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="card-gradient p-6 group hover:shadow-soft-lg hover:scale-[1.02] transition-all duration-300 animate-slide-up" style={{ animationDelay: '400ms' }}>
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 animate-slide-up" style={{ animationDelay: '400ms' }}>
             <div className="flex items-start justify-between">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-soft group-hover:shadow-glow group-hover:scale-110 transition-all duration-300">
-                  <DollarSign className="w-6 h-6 text-white group-hover:animate-bounce-soft" />
+                <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/20">
+                  <DollarSign className="w-6 h-6 text-white" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Revenue (30 days)</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1 group-hover:scale-105 transition-transform">{formatCurrency(stats.totalRevenue)}</p>
-                  {revenueGrowth && (
-                    <div className={`flex items-center mt-2 text-sm ${
-                      revenueGrowth.isPositive ? 'text-success-600' : 'text-danger-600'
-                    }`}>
-                      <revenueGrowth.icon className="w-4 h-4 mr-1 group-hover:animate-bounce-soft" />
-                      {revenueGrowth.value}% from last month
-                    </div>
-                  )}
+                  <p className="text-sm font-medium text-slate-500">Revenue (30 days)</p>
+                  <p className="text-2xl font-bold text-slate-800 mt-1">{formatCurrency(stats.totalRevenue)}</p>
+                  {revenueGrowth && (() => {
+                    const GrowthIcon = revenueGrowth.icon;
+                    return (
+                      <div className={`flex items-center mt-2 text-sm ${
+                        revenueGrowth.isPositive ? 'text-success-600' : 'text-danger-600'
+                      }`}>
+                        <GrowthIcon className="w-4 h-4 mr-1 group-hover:animate-bounce-soft" />
+                        {revenueGrowth.value}% from last month
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -331,15 +323,15 @@ const Dashboard = () => {
         </div>
 
         {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Member Growth Chart */}
-          <div className="card p-6">
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Member Growth</h3>
-                <p className="text-sm text-gray-500">New members over time</p>
+                <h3 className="text-lg font-semibold text-slate-800">Member Growth</h3>
+                <p className="text-sm text-slate-500">New members over time</p>
               </div>
-              <div className="badge-primary">
+              <div className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
                 <TrendingUp className="w-3 h-3 mr-1" />
                 +12.5%
               </div>
@@ -376,13 +368,13 @@ const Dashboard = () => {
           </div>
 
           {/* Revenue Chart */}
-          <div className="card p-6">
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Revenue Trend</h3>
-                <p className="text-sm text-gray-500">Monthly revenue performance</p>
+                <h3 className="text-lg font-semibold text-slate-800">Revenue Trend</h3>
+                <p className="text-sm text-slate-500">Monthly revenue performance</p>
               </div>
-              <div className="badge-success">
+              <div className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
                 <DollarSign className="w-3 h-3 mr-1" />
                 +8.2%
               </div>
@@ -420,14 +412,14 @@ const Dashboard = () => {
         </div>
 
         {/* Payment Mode Distribution */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="card p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Payment Distribution</h3>
-                <p className="text-sm text-gray-500">Payment modes breakdown</p>
+                <h3 className="text-lg font-semibold text-slate-800">Payment Distribution</h3>
+                <p className="text-sm text-slate-500">Payment modes breakdown</p>
               </div>
-              <PieChartIcon className="w-5 h-5 text-gray-400" />
+              <PieChartIcon className="w-5 h-5 text-slate-400" />
             </div>
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
@@ -474,74 +466,74 @@ const Dashboard = () => {
 
           {/* Quick Stats */}
           <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="card-gradient p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-semibold text-gray-900">Avg. Member Value</h4>
-                <DollarSign className="w-5 h-5 text-purple-500" />
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-slate-800">Avg. Member Value</h4>
+                <DollarSign className="w-5 h-5 text-violet-500" />
               </div>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-xl font-bold text-slate-800">
                 {formatCurrency(stats.totalMembers > 0 ? stats.totalRevenue / stats.totalMembers : 0)}
               </div>
-              <p className="text-sm text-gray-500 mt-1">Per member revenue</p>
+              <p className="text-sm text-slate-500 mt-1">Per member revenue</p>
             </div>
 
-            <div className="card-gradient p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-semibold text-gray-900">Monthly Growth</h4>
-                <TrendingUp className="w-5 h-5 text-success-500" />
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-slate-800">Monthly Growth</h4>
+                <TrendingUp className="w-5 h-5 text-emerald-500" />
               </div>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-xl font-bold text-slate-800">
                 +{memberGrowth ? memberGrowth.value : '0'}%
               </div>
-              <p className="text-sm text-gray-500 mt-1">Member acquisition rate</p>
+              <p className="text-sm text-slate-500 mt-1">Member acquisition rate</p>
             </div>
 
-            <div className="card-gradient p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-semibold text-gray-900">Retention Rate</h4>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-slate-800">Retention Rate</h4>
                 <Activity className="w-5 h-5 text-blue-500" />
               </div>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-xl font-bold text-slate-800">
                 {stats.totalMembers > 0 ? Math.round((stats.activeMembers / stats.totalMembers) * 100) : 0}%
               </div>
-              <p className="text-sm text-gray-500 mt-1">Active member ratio</p>
+              <p className="text-sm text-slate-500 mt-1">Active member ratio</p>
             </div>
 
-            <div className="card-gradient p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-semibold text-gray-900">Renewal Alert</h4>
-                <AlertCircle className="w-5 h-5 text-warning-500" />
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-slate-800">Renewal Alert</h4>
+                <AlertCircle className="w-5 h-5 text-amber-500" />
               </div>
-              <div className="text-2xl font-bold text-gray-900">{stats.expiringSoon}</div>
-              <p className="text-sm text-gray-500 mt-1">Members expiring soon</p>
+              <div className="text-xl font-bold text-slate-800">{stats.expiringSoon}</div>
+              <p className="text-sm text-slate-500 mt-1">Members expiring soon</p>
             </div>
           </div>
         </div>
 
         {/* Recent Members */}
-        <div className="card">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Recent Members</h3>
-                <p className="text-sm text-gray-500">Latest additions to your gym</p>
+                <h3 className="text-lg font-semibold text-slate-800">Recent Members</h3>
+                <p className="text-sm text-slate-500">Latest additions to your gym</p>
               </div>
-              <button className="btn-ghost text-sm">
+              <Link to="/members" className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors">
                 View all
-                <ArrowUpRight className="w-4 h-4 ml-1" />
-              </button>
+                <ArrowUpRight className="w-4 h-4" />
+              </Link>
             </div>
             
             <div className="overflow-x-auto">
               <div className="min-w-full">
                 <div className="divide-y divide-gray-100">
                   {recentMembers.map((member, index) => (
-                    <div key={member._id} className="table-row py-4">
+                    <div key={member._id} className="py-4 hover:bg-slate-50/80 transition-colors rounded-xl px-3 -mx-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <div className="relative">
-                            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center shadow-soft">
-                              <span className="text-white font-semibold text-sm">
+                            <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center text-slate-900 font-semibold text-sm">
+                              <span>
                                 {member.name.charAt(0).toUpperCase()}
                               </span>
                             </div>
@@ -550,8 +542,8 @@ const Dashboard = () => {
                             }`}></div>
                           </div>
                           <div>
-                            <div className="font-medium text-gray-900">{member.name}</div>
-                            <div className="text-sm text-gray-500">{member.email}</div>
+                            <div className="font-medium text-slate-800">{member.name}</div>
+                            <div className="text-sm text-slate-500">{member.email}</div>
                           </div>
                         </div>
                         <div className="flex items-center space-x-6">
@@ -584,15 +576,18 @@ const Dashboard = () => {
                 
                 {recentMembers.length === 0 && (
                   <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Users className="w-8 h-8 text-gray-400" />
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Users className="w-8 h-8 text-slate-400" />
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No members yet</h3>
-                    <p className="text-gray-500 mb-4">Start by adding your first gym member</p>
-                    <button className="btn-primary">
-                      <Users className="w-4 h-4 mr-2" />
+                    <h3 className="text-lg font-medium text-slate-800 mb-2">No members yet</h3>
+                    <p className="text-slate-500 mb-4">Start by adding your first gym member</p>
+                    <Link
+                      to="/members/add"
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all"
+                    >
+                      <Users className="w-4 h-4" />
                       Add Member
-                    </button>
+                    </Link>
                   </div>
                 )}
               </div>
@@ -600,7 +595,6 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-    </Layout>
   );
 };
 

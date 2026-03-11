@@ -7,7 +7,7 @@
     "server": "cd server && npm run dev",
     "client": "cd client && npm run dev",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "build": "cd client && npm run build",
+    "build": "cd client && npm install && npm run build",
     "start": "cd server && npm start"
   },
   "keywords": ["gym", "management", "saas", "mern"],

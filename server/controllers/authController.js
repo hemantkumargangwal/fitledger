@@ -4,6 +4,7 @@ const User = require('../models/User');
 const validator = require('validator');
 
 const generateToken = (userId) => {
+  console.log("process.env.JWT_SECRET", process.env.JWT_SECRET);
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 

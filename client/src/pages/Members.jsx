@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import Layout from '../layouts/Layout';
 import { Plus, Search, Edit, Trash2, Filter, Users, Calendar, Phone, Mail, MoreVertical, ChevronDown, UserPlus, AlertTriangle, Clock, CheckCircle, XCircle, ArrowUpDown, RefreshCw } from 'lucide-react';
 import { MembersPageSkeleton } from '../components/SkeletonLoader';
-import Alert from '../components/Alert';
+// import Alert from '../components/Alert'; // Not used
 import { memberService } from '../services/memberService';
-import { formatDate, getInitials } from '../utils/formatters';
-import { ERROR_MESSAGES, SUCCESS_MESSAGES, MEMBER_STATUS } from '../utils/constants';
+// import { formatDate, getInitials } from '../utils/formatters'; // Unused custom imports; local ones in use
+import { ERROR_MESSAGES } from '../utils/constants';
 
 const Members = () => {
   const [members, setMembers] = useState([]);
@@ -34,6 +33,7 @@ const Members = () => {
 
   useEffect(() => {
     fetchMembers();
+    // eslint-disable-next-line
   }, [currentPage, searchTerm, statusFilter, sortBy, sortOrder]);
 
   const fetchMembers = async () => {
@@ -46,15 +46,14 @@ const Members = () => {
         sortBy,
         sortOrder
       };
-      
       if (searchTerm) params.search = searchTerm;
       if (statusFilter !== 'all') params.status = statusFilter;
-
       const response = await memberService.getMembers(params);
-      setMembers(response.members || []);
-      setTotalPages(response.totalPages || 1);
-      
-      // Show success toast
+
+      setMembers(response && response.members ? response.members : []);
+      setTotalPages(response && typeof response.totalPages === 'number' ? response.totalPages : 1);
+
+      // Show success toast if available
       if (window.toast) {
         window.toast({
           type: 'success',
@@ -63,11 +62,9 @@ const Members = () => {
           duration: 3000
         });
       }
-    } catch (error) {
-      console.error('Error fetching members:', error);
-      setError(ERROR_MESSAGES.NETWORK_ERROR);
-      
-      // Show error toast
+    } catch (e) {
+      console.error('Error fetching members:', e);
+      setError(ERROR_MESSAGES && ERROR_MESSAGES.NETWORK_ERROR ? ERROR_MESSAGES.NETWORK_ERROR : "Error fetching members");
       if (window.toast) {
         window.toast({
           type: 'error',
@@ -76,8 +73,6 @@ const Members = () => {
           duration: 5000
         });
       }
-      
-      // Set mock data for demo
       setMockMembers();
     } finally {
       setLoading(false);
@@ -124,17 +119,23 @@ const Members = () => {
       }
     ];
     setMembers(mockMembers);
+    setTotalPages(1);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editingMember) {
-        await axios.put(`/api/members/${editingMember._id}`, formData);
+        await memberService.updateMember(editingMember._id, {
+          ...formData,
+          planDuration: Number(formData.planDuration)
+        });
       } else {
-        await axios.post('/api/members', formData);
+        await memberService.createMember({
+          ...formData,
+          planDuration: Number(formData.planDuration)
+        });
       }
-      
       setShowModal(false);
       setEditingMember(null);
       setFormData({
@@ -147,6 +148,14 @@ const Members = () => {
       fetchMembers();
     } catch (error) {
       console.error('Error saving member:', error);
+      if (window.toast) {
+        window.toast({
+          type: 'error',
+          title: 'Save Error',
+          message: 'Failed to save member.',
+          duration: 3500,
+        });
+      }
     }
   };
 
@@ -156,8 +165,8 @@ const Members = () => {
       name: member.name,
       phone: member.phone,
       email: member.email || '',
-      joiningDate: new Date(member.joiningDate).toISOString().split('T')[0],
-      planDuration: member.planDuration.toString()
+      joiningDate: member.joiningDate ? new Date(member.joiningDate).toISOString().split('T')[0] : '',
+      planDuration: member.planDuration ? String(member.planDuration) : ''
     });
     setShowModal(true);
   };
@@ -170,27 +179,39 @@ const Members = () => {
   const handleDeleteConfirm = async () => {
     if (memberToDelete) {
       try {
-        await axios.delete(`/api/members/${memberToDelete._id}`);
+        await memberService.deleteMember(memberToDelete._id);
         setShowDeleteDialog(false);
         setMemberToDelete(null);
         fetchMembers();
       } catch (error) {
         console.error('Error deleting member:', error);
+        if (window.toast) {
+          window.toast({
+            type: 'error',
+            title: 'Delete Error',
+            message: 'Failed to delete member.',
+            duration: 3500,
+          });
+        }
       }
     }
   };
 
   const handleSort = (field) => {
     if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      setSortOrder((s) => (s === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortBy(field);
       setSortOrder('asc');
     }
   };
 
+  // Use local formatDate and getInitials for self-contained
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date)) return '';
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -198,10 +219,27 @@ const Members = () => {
   };
 
   const getExpiryStatus = (expiryDate) => {
+    if (!expiryDate) {
+      return {
+        status: 'expired',
+        badge: 'badge-danger',
+        icon: XCircle,
+        text: 'Expired',
+        color: 'text-danger-600'
+      };
+    }
     const today = new Date();
     const expiry = new Date(expiryDate);
     const daysUntilExpiry = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
-    
+    if (isNaN(daysUntilExpiry)) {
+      return {
+        status: 'expired',
+        badge: 'badge-danger',
+        icon: XCircle,
+        text: 'Expired',
+        color: 'text-danger-600'
+      };
+    }
     if (daysUntilExpiry < 0) {
       return {
         status: 'expired',
@@ -230,30 +268,76 @@ const Members = () => {
   };
 
   const getInitials = (name) => {
-    return name.split(' ').map(word => word.charAt(0).toUpperCase()).join('').substring(0, 2);
+    if (!name || typeof name !== 'string') return '';
+    return name
+      .split(' ')
+      .filter(Boolean)
+      .map(word => word.charAt(0).toUpperCase())
+      .join('')
+      .substring(0, 2);
   };
 
-  const filteredAndSortedMembers = members.filter(member => {
-    const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.phone.includes(searchTerm) ||
-                         (member.email && member.email.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesStatus = statusFilter === 'all' || member.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  // Clear search and statusFilter check for undefined members
+  const filteredAndSortedMembers = Array.isArray(members) ? members
+    .filter(member => {
+      if (!member) return false;
+      const term = searchTerm.trim().toLowerCase();
+      const matchesSearch =
+        member.name?.toLowerCase().includes(term) ||
+        (member.phone && member.phone.includes(term)) ||
+        (member.email && member.email.toLowerCase().includes(term));
+      const matchesStatus = statusFilter === 'all' || member.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    })
+    // Sort as per selection
+    .sort((a, b) => {
+      let aField, bField;
+      if (sortBy === 'name') {
+        aField = (a.name || '').toLowerCase();
+        bField = (b.name || '').toLowerCase();
+      } else if (sortBy === 'joiningDate') {
+        aField = new Date(a.joiningDate);
+        bField = new Date(b.joiningDate);
+      } else if (sortBy === 'expiryDate') {
+        aField = new Date(a.expiryDate);
+        bField = new Date(b.expiryDate);
+      } else {
+        aField = '';
+        bField = '';
+      }
+      if (aField < bField) return sortOrder === 'asc' ? -1 : 1;
+      if (aField > bField) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    })
+    :
+    [];
+
+  // Correct page calculation for filtered members
+  const itemsPerPage = 10;
+  const totalFiltered = filteredAndSortedMembers.length;
+  const paginatedMembers = filteredAndSortedMembers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => {
+    // if currentPage is out of range after filtering, reset to 1
+    if (currentPage > Math.ceil(totalFiltered / itemsPerPage) && totalFiltered > 0) {
+      setCurrentPage(1);
+    }
+    // eslint-disable-next-line
+  }, [totalFiltered]);
+
+  // Correct calculation of shown items in pagination ("Showing x to y of z members")
+  const fromIdx = totalFiltered === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1;
+  const toIdx = Math.min(currentPage * itemsPerPage, totalFiltered);
 
   if (loading) {
-    return (
-      <Layout>
-        <MembersPageSkeleton />
-      </Layout>
-    );
+    return <MembersPageSkeleton />;
   }
 
   return (
-    <Layout>
-      <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -261,13 +345,14 @@ const Members = () => {
             <p className="text-gray-600 mt-1">Manage your gym members and their memberships</p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="btn-secondary">
+            <button className="btn-secondary" type="button" tabIndex={-1}>
               <Filter className="w-4 h-4" />
               Export
             </button>
             <button
               onClick={() => setShowModal(true)}
               className="btn-primary"
+              type="button"
             >
               <UserPlus className="w-4 h-4" />
               Add Member
@@ -361,174 +446,172 @@ const Members = () => {
                   <option value="name-asc">Name (A-Z)</option>
                   <option value="name-desc">Name (Z-A)</option>
                   <option value="expiryDate-asc">Expiry Soon</option>
+                  <option value="expiryDate-desc">Expiry Far</option>
                 </select>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Members Table */}
-        <div className="card">
+        {/* Members Table - CSS Grid for exact column alignment */}
+        <div className="card overflow-hidden">
           <div className="overflow-x-auto">
-            <div className="min-w-full">
-              <div className="divide-y divide-gray-100">
-                {/* Table Header */}
-                <div className="table-header px-6 py-4">
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="w-8"></div>
-                    <div className="flex-1">
-                      <button
-                        onClick={() => handleSort('name')}
-                        className="flex items-center gap-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700"
-                      >
-                        Member
-                        <ArrowUpDown className="w-3 h-3" />
-                      </button>
+            {paginatedMembers.length > 0 && (
+            <div
+              className="min-w-[700px] grid gap-x-4 px-6 py-4 border-b border-gray-200 bg-gray-50/80"
+              style={{ gridTemplateColumns: '32px minmax(160px, 1fr) 110px 95px 95px 72px 48px' }}
+            >
+              {/* Header row - direct grid children */}
+              <div aria-hidden />
+              <div>
+                <button
+                  onClick={() => handleSort('name')}
+                  className="flex items-center gap-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700"
+                  type="button"
+                >
+                  Member
+                  <ArrowUpDown className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</div>
+              <div>
+                <button
+                  onClick={() => handleSort('joiningDate')}
+                  className="flex items-center gap-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700"
+                  type="button"
+                >
+                  Joined
+                  <ArrowUpDown className="w-3 h-3" />
+                </button>
+              </div>
+              <div>
+                <button
+                  onClick={() => handleSort('expiryDate')}
+                  className="flex items-center gap-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700"
+                  type="button"
+                >
+                  Expires
+                  <ArrowUpDown className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Status</div>
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</div>
+            </div>
+            )}
+
+            {/* Body rows - each row is a grid with same template */}
+            {paginatedMembers.map((member) => {
+              const expiryInfo = getExpiryStatus(member.expiryDate);
+              const ExpiryIcon = expiryInfo.icon;
+              return (
+                <div
+                  key={member._id}
+                  className="min-w-[700px] grid gap-x-4 px-6 py-4 items-center border-b border-gray-100 hover:bg-gray-50/50 transition-colors"
+                  style={{ gridTemplateColumns: '32px minmax(160px, 1fr) 110px 95px 95px 72px 48px' }}
+                >
+                  <div aria-hidden />
+                  {/* Member */}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="relative shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-900 font-semibold text-sm shadow-sm">
+                        {getInitials(member.name)}
+                      </div>
+                      <span
+                        className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
+                          expiryInfo.status === 'active' ? 'bg-emerald-500' :
+                          expiryInfo.status === 'expiring' ? 'bg-amber-500' : 'bg-red-500'
+                        }`}
+                        title={expiryInfo.status}
+                        aria-hidden
+                      />
                     </div>
-                    <div className="w-32">Contact</div>
-                    <div className="w-24">
-                      <button
-                        onClick={() => handleSort('joiningDate')}
-                        className="flex items-center gap-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700"
-                      >
-                        Joined
-                        <ArrowUpDown className="w-3 h-3" />
-                      </button>
+                    <div className="min-w-0">
+                      <div className="font-medium text-gray-900 truncate">{member.name}</div>
+                      <div className="flex items-center gap-1.5 text-sm text-gray-500 truncate">
+                        <Mail className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                        <span className="truncate">{member.email || 'No email'}</span>
+                      </div>
                     </div>
-                    <div className="w-24">
-                      <button
-                        onClick={() => handleSort('expiryDate')}
-                        className="flex items-center gap-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700"
-                      >
-                        Expires
-                        <ArrowUpDown className="w-3 h-3" />
-                      </button>
+                  </div>
+                  {/* Contact */}
+                  <div className="text-sm text-gray-900 truncate" title={member.phone}>
+                    <span className="flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                      {member.phone}
+                    </span>
+                  </div>
+                  {/* Joined */}
+                  <div>
+                    <div className="text-sm text-gray-900">{formatDate(member.joiningDate)}</div>
+                    <div className="text-xs text-gray-500">
+                      {member.planDuration} month{Number(member.planDuration) > 1 ? 's' : ''}
                     </div>
-                    <div className="w-20">Status</div>
-                    <div className="w-16">Actions</div>
+                  </div>
+                  {/* Expires */}
+                  <div>
+                    <div className={`text-sm font-medium ${expiryInfo.color}`}>
+                      {formatDate(member.expiryDate)}
+                    </div>
+                    <div className="text-xs text-gray-500" title={expiryInfo.text}>
+                      <ExpiryIcon className="w-3 h-3 inline" />
+                    </div>
+                  </div>
+                  {/* Status */}
+                  <div>
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                        expiryInfo.status === 'active' ? 'bg-emerald-50 text-emerald-700' :
+                        expiryInfo.status === 'expiring' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'
+                      }`}
+                    >
+                      {expiryInfo.status}
+                    </span>
+                  </div>
+                  {/* Actions */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowDropdown(showDropdown === member._id ? null : member._id)}
+                      className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                      aria-expanded={showDropdown === member._id}
+                      aria-haspopup="true"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+                    {showDropdown === member._id && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-40"
+                          aria-hidden="true"
+                          onClick={() => setShowDropdown(null)}
+                        />
+                        <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-[100]">
+                          <button
+                            type="button"
+                            onClick={() => { handleEdit(member); setShowDropdown(null); }}
+                            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 text-left"
+                          >
+                            <Edit className="w-4 h-4 shrink-0" />
+                            Edit Member
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { handleDeleteClick(member); setShowDropdown(null); }}
+                            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 text-left"
+                          >
+                            <Trash2 className="w-4 h-4 shrink-0" />
+                            Delete Member
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
+              );
+            })}
+          </div>
 
-                {/* Table Body */}
-                <div className="divide-y divide-gray-100">
-                  {filteredAndSortedMembers.map((member) => {
-                    const expiryInfo = getExpiryStatus(member.expiryDate);
-                    const ExpiryIcon = expiryInfo.icon;
-                    
-                    return (
-                      <div key={member._id} className="table-row px-6 py-4">
-                        <div className="flex items-center gap-4 flex-1">
-                          {/* Avatar */}
-                          <div className="relative">
-                            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center shadow-soft">
-                              <span className="text-white font-semibold text-sm">
-                                {getInitials(member.name)}
-                              </span>
-                            </div>
-                            <div className={`absolute -bottom-1 -right-1 w-3 h-3 border-2 border-white rounded-full ${
-                              member.status === 'active' ? 'bg-success-500' : 
-                              member.status === 'expiring' ? 'bg-warning-500' : 
-                              'bg-danger-500'
-                            }`}></div>
-                          </div>
-
-                          {/* Member Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <div className="font-medium text-gray-900 truncate">
-                                {member.name}
-                              </div>
-                              <span className={expiryInfo.badge}>
-                                {expiryInfo.text}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
-                              <Mail className="w-3 h-3" />
-                              <span className="truncate">{member.email || 'No email'}</span>
-                            </div>
-                          </div>
-
-                          {/* Contact */}
-                          <div className="w-32">
-                            <div className="flex items-center gap-1 text-sm text-gray-900">
-                              <Phone className="w-3 h-3 text-gray-400" />
-                              <span>{member.phone}</span>
-                            </div>
-                          </div>
-
-                          {/* Joined Date */}
-                          <div className="w-24">
-                            <div className="text-sm text-gray-900">
-                              {formatDate(member.joiningDate)}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {member.planDuration} month{member.planDuration > 1 ? 's' : ''}
-                            </div>
-                          </div>
-
-                          {/* Expiry Date */}
-                          <div className="w-24">
-                            <div className={`text-sm ${expiryInfo.color} font-medium`}>
-                              {formatDate(member.expiryDate)}
-                            </div>
-                            <div className="flex items-center gap-1 text-xs text-gray-500">
-                              <ExpiryIcon className="w-3 h-3" />
-                              <span>{expiryInfo.text}</span>
-                            </div>
-                          </div>
-
-                          {/* Status Badge */}
-                          <div className="w-20">
-                            <span className={expiryInfo.badge}>
-                              {expiryInfo.status}
-                            </span>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="w-16">
-                            <div className="relative">
-                              <button
-                                onClick={() => setShowDropdown(showDropdown === member._id ? null : member._id)}
-                                className="btn-ghost p-1"
-                              >
-                                <MoreVertical className="w-4 h-4" />
-                              </button>
-
-                              {/* Dropdown */}
-                              {showDropdown === member._id && (
-                                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-soft-lg border border-gray-200 overflow-hidden z-10">
-                                  <button
-                                    onClick={() => {
-                                      handleEdit(member);
-                                      setShowDropdown(null);
-                                    }}
-                                    className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                    Edit Member
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      handleDeleteClick(member);
-                                      setShowDropdown(null);
-                                    }}
-                                    className="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                    Delete Member
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {filteredAndSortedMembers.length === 0 && (
+          {paginatedMembers.length === 0 && (
                 <div className="text-center py-16">
                   <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
                     <Users className="w-10 h-10 text-gray-400" />
@@ -543,23 +626,23 @@ const Members = () => {
                   <button
                     onClick={() => setShowModal(true)}
                     className="btn-primary"
+                    type="button"
                   >
                     <UserPlus className="w-4 h-4 mr-2" />
                     Add Your First Member
                   </button>
                 </div>
               )}
-            </div>
-          </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
               <div className="text-sm text-gray-600">
-                Showing {((currentPage - 1) * 10) + 1} to {Math.min(currentPage * 10, filteredAndSortedMembers.length)} of {filteredAndSortedMembers.length} members
+                Showing {fromIdx} to {toIdx} of {totalFiltered} members
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
                   className="btn-secondary px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -567,11 +650,14 @@ const Members = () => {
                   Previous
                 </button>
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  {Array.from({
+                    length: Math.min(5, totalPages)
+                  }, (_, i) => {
                     const pageNum = i + 1;
                     return (
                       <button
                         key={pageNum}
+                        type="button"
                         onClick={() => setCurrentPage(pageNum)}
                         className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                           currentPage === pageNum
@@ -595,10 +681,8 @@ const Members = () => {
             </div>
           )}
         </div>
-      </div>
 
-      {/* Add/Edit Member Modal */}
-      {showModal && (
+        {showModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity" onClick={() => setShowModal(false)}>
@@ -633,6 +717,7 @@ const Members = () => {
                         onChange={(e) => setFormData({...formData, name: e.target.value})}
                         className="input"
                         placeholder="Enter member's full name"
+                        autoFocus
                       />
                     </div>
 
@@ -724,10 +809,10 @@ const Members = () => {
             </div>
           </div>
         </div>
-      )}
+        )}
 
-      {/* Delete Confirmation Dialog */}
-      {showDeleteDialog && memberToDelete && (
+        {/* Delete Confirmation Dialog */}
+        {showDeleteDialog && memberToDelete && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity" onClick={() => setShowDeleteDialog(false)}>
@@ -754,10 +839,12 @@ const Members = () => {
                 <button
                   onClick={handleDeleteConfirm}
                   className="btn-danger flex-1"
+                  type="button"
                 >
                   Delete Member
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowDeleteDialog(false);
                     setMemberToDelete(null);
@@ -770,8 +857,8 @@ const Members = () => {
             </div>
           </div>
         </div>
-      )}
-    </Layout>
+        )}
+    </div>
   );
 };
 
