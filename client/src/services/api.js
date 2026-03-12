@@ -1,8 +1,15 @@
 import axios from 'axios';
 
+// Normalize base URL - remove trailing slash if present
+const getBaseURL = () => {
+  const envURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  // Remove trailing slash to avoid double slashes in URLs
+  return envURL.endsWith('/') ? envURL.slice(0, -1) : envURL;
+};
+
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: getBaseURL(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
