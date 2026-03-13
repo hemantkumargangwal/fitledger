@@ -1,4 +1,5 @@
 const Member = require('../models/Member');
+const { createLog } = require('../services/activityService');
 
 const addMember = async (req, res) => {
   try {
@@ -26,6 +27,7 @@ const addMember = async (req, res) => {
 
     await member.save();
     await member.populate('gymId', 'gymName');
+    await createLog(req.gymId, member._id, 'member_joined', `${name} joined the gym. Plan: ${planDuration} month(s).`);
 
     res.status(201).json({
       message: 'Member added successfully',
@@ -39,7 +41,7 @@ const addMember = async (req, res) => {
 
 const getMembers = async (req, res) => {
   try {
-    const { search, status, page = 1, limit = 10 } = req.query;
+    const { search, status, page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
     
     // Build query
     const query = { gymId: req.gymId };
@@ -56,8 +58,13 @@ const getMembers = async (req, res) => {
       ];
     }
 
+    const allowedSort = ['createdAt', 'name', 'joiningDate', 'expiryDate', 'status'];
+    const sortField = allowedSort.includes(sortBy) ? sortBy : 'createdAt';
+    const order = sortOrder === 'asc' ? 1 : -1;
+    const sort = { [sortField]: order };
+
     const members = await Member.find(query)
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
@@ -71,6 +78,29 @@ const getMembers = async (req, res) => {
     });
   } catch (error) {
     console.error('Get members error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/** Sync member status (active/expired) based on expiryDate. Call periodically or on demand. */
+const syncMemberStatus = async (req, res) => {
+  try {
+    const now = new Date();
+    const result = await Member.updateMany(
+      { gymId: req.gymId, expiryDate: { $lt: now }, status: 'active' },
+      { $set: { status: 'expired' } }
+    );
+    const expiredToActive = await Member.updateMany(
+      { gymId: req.gymId, expiryDate: { $gte: now }, status: 'expired' },
+      { $set: { status: 'active' } }
+    );
+    res.json({
+      message: 'Status synced',
+      expiredCount: result.modifiedCount,
+      reactivatedCount: expiredToActive.modifiedCount
+    });
+  } catch (error) {
+    console.error('Sync status error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -100,19 +130,26 @@ const updateMember = async (req, res) => {
       return res.status(404).json({ message: 'Member not found' });
     }
 
+    const planChanged = planDuration != null && parseInt(planDuration, 10) !== member.planDuration;
+
     // Update fields
     if (name) member.name = name;
     if (phone) member.phone = phone;
-    if (email) member.email = email;
+    if (email !== undefined) member.email = email;
     if (planDuration) {
       member.planDuration = parseInt(planDuration);
-      // Recalculate expiry date
       const expiry = new Date(member.joiningDate);
       expiry.setMonth(expiry.getMonth() + parseInt(planDuration));
       member.expiryDate = expiry;
     }
 
     await member.save();
+
+    if (planChanged) {
+      await createLog(req.gymId, member._id, 'member_renewed', `Plan updated. New expiry: ${member.expiryDate.toISOString().slice(0, 10)}.`);
+    } else {
+      await createLog(req.gymId, member._id, 'member_updated', 'Member details updated.');
+    }
 
     res.json({
       message: 'Member updated successfully',
@@ -132,6 +169,7 @@ const deleteMember = async (req, res) => {
       return res.status(404).json({ message: 'Member not found' });
     }
 
+    await createLog(req.gymId, member._id, 'member_deleted', `${member.name} was removed from the gym.`);
     await Member.findByIdAndDelete(req.params.id);
 
     res.json({ message: 'Member deleted successfully' });
@@ -146,5 +184,6 @@ module.exports = {
   getMembers,
   getMember,
   updateMember,
-  deleteMember
+  deleteMember,
+  syncMemberStatus
 };

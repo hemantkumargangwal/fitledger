@@ -128,9 +128,13 @@ const ToastContainer = () => {
   }, []);
 
   return (
-    <div className="fixed top-20 right-4 z-50 space-y-3 pointer-events-none">
-      {toasts.map(toast => (
-        <div key={toast.id} className="pointer-events-auto">
+    <div
+      className="fixed top-20 right-4 z-[100] flex flex-col gap-3 pointer-events-none max-h-[calc(100vh-6rem)] overflow-hidden"
+      aria-live="polite"
+      aria-label="Notifications"
+    >
+      {toasts.map((toast) => (
+        <div key={toast.id} className="pointer-events-auto flex-shrink-0">
           <Toast toast={toast} onRemove={removeToast} />
         </div>
       ))}

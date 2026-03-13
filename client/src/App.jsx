@@ -11,6 +11,7 @@ import Payments from './pages/Payments';
 import AddPayment from './pages/AddPayment';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import MemberProfile from './pages/MemberProfile';
 import ProtectedRoute from './components/ProtectedRoute';
 import ToastContainer from './components/Toast';
 import './services/api'; // Initialize API interceptors
@@ -33,6 +34,7 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="members" element={<Members />} />
             <Route path="members/add" element={<AddMember />} />
+            <Route path="members/:id" element={<MemberProfile />} />
             <Route path="payments" element={<Payments />} />
             <Route path="payments/add" element={<AddPayment />} />
             <Route path="reports" element={<Reports />} />

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, TrendingUp, CreditCard, AlertCircle, ArrowUpRight, ArrowDownRight, Calendar, DollarSign, Activity, PieChart as PieChartIcon, RefreshCw } from 'lucide-react';
+import { Users, TrendingUp, CreditCard, AlertCircle, ArrowUpRight, ArrowDownRight, Calendar, DollarSign, Activity, PieChart as PieChartIcon, RefreshCw, UserPlus, CalendarClock, AlertTriangle, History } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { DashboardSkeleton } from '../components/SkeletonLoader';
 import Alert from '../components/Alert';
+import EmptyState from '../components/EmptyState';
 import { dashboardService } from '../services/dashboardService';
 import { formatCurrency } from '../utils/formatters';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../utils/constants';
@@ -12,6 +13,7 @@ const Dashboard = () => {
   const [stats, setStats] = useState({
     totalMembers: 0,
     activeMembers: 0,
+    newMembersThisMonth: 0,
     expiringSoon: 0,
     totalRevenue: 0
   });
@@ -19,6 +21,9 @@ const Dashboard = () => {
   const [revenueData, setRevenueData] = useState([]);
   const [paymentModeData, setPaymentModeData] = useState([]);
   const [recentMembers, setRecentMembers] = useState([]);
+  const [revenueSummary, setRevenueSummary] = useState({ today: 0, week: 0, month: 0 });
+  const [expiringAlerts, setExpiringAlerts] = useState({ count7: 0, count14: 0, count30: 0, members: [] });
+  const [gymActivity, setGymActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -32,18 +37,28 @@ const Dashboard = () => {
       setLoading(true);
       setError(null);
       
-      const [statsData, growthData, revenueData, paymentData, recentMembersData] = await Promise.all([
+      const [statsData, growthData, revenueData, recentMembersData, paymentDist, revSummary, alerts, activity] = await Promise.all([
         dashboardService.getStats(),
         dashboardService.getMemberGrowth(),
         dashboardService.getRevenueData(),
-        dashboardService.getPaymentModes(),
-        dashboardService.getRecentMembers()
+        dashboardService.getRecentMembers(),
+        dashboardService.getPaymentDistribution(),
+        dashboardService.getRevenueSummary().catch(() => ({ today: 0, week: 0, month: 0 })),
+        dashboardService.getExpiringAlerts().catch(() => ({ count7: 0, count14: 0, count30: 0, members: [] })),
+        dashboardService.getGymActivity(15).catch(() => ({ activity: [] }))
       ]);
 
       setStats(statsData);
-      setMemberGrowthData(growthData.data);
-      setRevenueData(revenueData.data);
-      setPaymentModeData(paymentData.data);
+      setMemberGrowthData(growthData.data || []);
+      setRevenueData(revenueData.data || []);
+      setRevenueSummary(revSummary);
+      setExpiringAlerts(alerts);
+      setGymActivity(activity.activity || []);
+      setPaymentModeData(
+        (paymentDist.distribution && paymentDist.distribution.length > 0)
+          ? paymentDist.distribution
+          : [{ name: 'No payments yet', value: 100, color: '#e2e8f0' }]
+      );
       setRecentMembers(recentMembersData.members);
       
       // Show success toast on successful data fetch
@@ -87,9 +102,13 @@ const Dashboard = () => {
     setStats({
       totalMembers: 156,
       activeMembers: 142,
+      newMembersThisMonth: 12,
       expiringSoon: 8,
       totalRevenue: 24580
     });
+    setRevenueSummary({ today: 1200, week: 8400, month: 24580 });
+    setExpiringAlerts({ count7: 2, count14: 5, count30: 8, members: [] });
+    setGymActivity([]);
 
     setMemberGrowthData([
       { month: 'Jan', members: 120 },
@@ -173,6 +192,20 @@ const Dashboard = () => {
     );
   };
 
+  // Format chart month for display (e.g. "2024-01" -> "Jan")
+  const formatChartMonth = (monthStr) => {
+    if (!monthStr) return '';
+    const parts = String(monthStr).split('-');
+    if (parts.length >= 2) {
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const m = parseInt(parts[1], 10);
+      return monthNames[m - 1] || monthStr;
+    }
+    return monthStr;
+  };
+  const memberGrowthChartData = memberGrowthData.map((d) => ({ ...d, monthLabel: formatChartMonth(d.month) }));
+  const revenueChartData = revenueData.map((d) => ({ ...d, monthLabel: formatChartMonth(d.month) }));
+
   if (loading) {
     return <DashboardSkeleton />;
   }
@@ -180,6 +213,7 @@ const Dashboard = () => {
   // Calculate growth indicators (mock data for demo)
   const memberGrowth = getGrowthIndicator(stats.totalMembers, stats.totalMembers - 15);
   const revenueGrowth = getGrowthIndicator(stats.totalRevenue, stats.totalRevenue - 2000);
+  const hasPaymentDistribution = paymentModeData.some((d) => d.value > 0 && d.name !== 'No payments yet');
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -202,10 +236,13 @@ const Dashboard = () => {
               <Calendar className="w-4 h-4" />
               Last 30 days
             </button>
-            <button className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all">
+            <Link
+              to="/reports"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all"
+            >
               <TrendingUp className="w-4 h-4" />
               View Reports
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -222,12 +259,101 @@ const Dashboard = () => {
           </div>
         )}
 
+        {/* Analytics Widgets: New members, Expiring, Revenue summary */}
+        <section className="mb-8" aria-labelledby="analytics-widgets-heading">
+          <h2 id="analytics-widgets-heading" className="sr-only">Analytics overview</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div className="group bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-300 ease-out">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-500 to-sky-600 flex items-center justify-center shadow-lg shadow-sky-500/20 group-hover:scale-105 transition-transform duration-300">
+                    <UserPlus className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">New members this month</p>
+                    <p className="text-2xl font-bold text-slate-800">{stats.newMembersThisMonth ?? 0}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="group bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-300 ease-out">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform duration-300">
+                    <CalendarClock className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">Expiring memberships</p>
+                    <p className="text-2xl font-bold text-slate-800">{stats.expiringSoon ?? 0}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="group bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-300 ease-out">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/20 group-hover:scale-105 transition-transform duration-300">
+                    <DollarSign className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">Revenue (this month)</p>
+                    <p className="text-2xl font-bold text-slate-800">{formatCurrency(revenueSummary.month ?? 0)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Revenue summary cards: Today, This week, This month */}
+        <section className="mb-8" aria-labelledby="revenue-summary-heading">
+          <h2 id="revenue-summary-heading" className="text-lg font-semibold text-slate-800 mb-4">Daily &amp; period revenue</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300">
+              <p className="text-sm font-medium text-slate-500">Today</p>
+              <p className="text-xl font-bold text-slate-800 mt-1">{formatCurrency(revenueSummary.today ?? 0)}</p>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300">
+              <p className="text-sm font-medium text-slate-500">This week</p>
+              <p className="text-xl font-bold text-slate-800 mt-1">{formatCurrency(revenueSummary.week ?? 0)}</p>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300">
+              <p className="text-sm font-medium text-slate-500">This month</p>
+              <p className="text-xl font-bold text-slate-800 mt-1">{formatCurrency(revenueSummary.month ?? 0)}</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Expiring membership alerts banner */}
+        {(expiringAlerts.count7 > 0 || expiringAlerts.count14 > 0) && (
+          <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-4 flex flex-wrap items-center justify-between gap-4" role="alert">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-amber-900">Expiring membership alerts</p>
+                <p className="text-sm text-amber-800">
+                  {expiringAlerts.count7 > 0 && `${expiringAlerts.count7} in next 7 days`}
+                  {expiringAlerts.count7 > 0 && expiringAlerts.count14 > 0 && ' • '}
+                  {expiringAlerts.count14 > 0 && `${expiringAlerts.count14} in next 14 days`}
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/reports"
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 text-sm font-medium transition-colors"
+            >
+              View expiring list
+              <ArrowUpRight className="w-4 h-4" />
+            </Link>
+          </div>
+        )}
+
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 animate-slide-up" style={{ animationDelay: '100ms' }}>
+          <div className="group bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-300 ease-out animate-slide-up" style={{ animationDelay: '100ms' }}>
             <div className="flex items-start justify-between">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform duration-300">
                   <Users className="w-6 h-6 text-white" />
                 </div>
                 <div className="ml-4">
@@ -249,10 +375,10 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 animate-slide-up" style={{ animationDelay: '200ms' }}>
+          <div className="group bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-300 ease-out animate-slide-up" style={{ animationDelay: '200ms' }}>
             <div className="flex items-start justify-between">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform duration-300">
                   <Activity className="w-6 h-6 text-white" />
                 </div>
                 <div className="ml-4">
@@ -275,10 +401,10 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 animate-slide-up" style={{ animationDelay: '300ms' }}>
+          <div className="group bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-300 ease-out animate-slide-up" style={{ animationDelay: '300ms' }}>
             <div className="flex items-start justify-between">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
+                <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform duration-300">
                   <AlertCircle className="w-6 h-6 text-white" />
                 </div>
                 <div className="ml-4">
@@ -296,10 +422,10 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 animate-slide-up" style={{ animationDelay: '400ms' }}>
+          <div className="group bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-300 ease-out animate-slide-up" style={{ animationDelay: '400ms' }}>
             <div className="flex items-start justify-between">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/20">
+                <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/20 group-hover:scale-105 transition-transform duration-300">
                   <DollarSign className="w-6 h-6 text-white" />
                 </div>
                 <div className="ml-4">
@@ -325,7 +451,7 @@ const Dashboard = () => {
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Member Growth Chart */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 ease-out">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-lg font-semibold text-slate-800">Member Growth</h3>
@@ -337,7 +463,7 @@ const Dashboard = () => {
               </div>
             </div>
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={memberGrowthData}>
+              <AreaChart data={memberGrowthChartData}>
                 <defs>
                   <linearGradient id="memberGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
@@ -345,8 +471,8 @@ const Dashboard = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis 
-                  dataKey="month" 
+                <XAxis
+                  dataKey="monthLabel"
                   stroke="#9ca3af"
                   fontSize={12}
                 />
@@ -368,7 +494,7 @@ const Dashboard = () => {
           </div>
 
           {/* Revenue Chart */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 ease-out">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-lg font-semibold text-slate-800">Revenue Trend</h3>
@@ -380,7 +506,7 @@ const Dashboard = () => {
               </div>
             </div>
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={revenueData}>
+              <AreaChart data={revenueChartData}>
                 <defs>
                   <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
@@ -388,8 +514,8 @@ const Dashboard = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis 
-                  dataKey="month" 
+                <XAxis
+                  dataKey="monthLabel"
                   stroke="#9ca3af"
                   fontSize={12}
                 />
@@ -413,11 +539,11 @@ const Dashboard = () => {
 
         {/* Payment Mode Distribution */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 ease-out">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-lg font-semibold text-slate-800">Payment Distribution</h3>
-                <p className="text-sm text-slate-500">Payment modes breakdown</p>
+                <h3 className="text-lg font-semibold text-slate-800">Payment method distribution</h3>
+                <p className="text-sm text-slate-500">Last 30 days by mode</p>
               </div>
               <PieChartIcon className="w-5 h-5 text-slate-400" />
             </div>
@@ -428,7 +554,7 @@ const Dashboard = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={CustomPieLabel}
+                  label={hasPaymentDistribution ? CustomPieLabel : ({ name }) => (name === 'No payments yet' ? name : null)}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -437,8 +563,11 @@ const Dashboard = () => {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip 
-                  formatter={(value) => [`${value}%`, 'Percentage']}
+                <Tooltip
+                  formatter={(value, name, props) => [
+                    `${value}%${props.payload.amount != null ? ` (${formatCurrency(props.payload.amount)})` : ''}`,
+                    name
+                  ]}
                   contentStyle={{
                     backgroundColor: 'rgba(255, 255, 255, 0.95)',
                     border: '1px solid #e5e7eb',
@@ -452,13 +581,14 @@ const Dashboard = () => {
               {paymentModeData.map((mode, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
+                    <div
+                      className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: mode.color }}
-                    ></div>
-                    <span className="text-sm text-gray-600">{mode.name}</span>
+                      aria-hidden
+                    />
+                    <span className="text-sm text-slate-600">{mode.name}</span>
                   </div>
-                  <span className="text-sm font-medium text-gray-900">{mode.value}%</span>
+                  <span className="text-sm font-medium text-slate-900">{mode.value}%</span>
                 </div>
               ))}
             </div>
@@ -466,7 +596,7 @@ const Dashboard = () => {
 
           {/* Quick Stats */}
           <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-300 ease-out">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-semibold text-slate-800">Avg. Member Value</h4>
                 <DollarSign className="w-5 h-5 text-violet-500" />
@@ -477,7 +607,7 @@ const Dashboard = () => {
               <p className="text-sm text-slate-500 mt-1">Per member revenue</p>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-300 ease-out">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-semibold text-slate-800">Monthly Growth</h4>
                 <TrendingUp className="w-5 h-5 text-emerald-500" />
@@ -488,7 +618,7 @@ const Dashboard = () => {
               <p className="text-sm text-slate-500 mt-1">Member acquisition rate</p>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-300 ease-out">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-semibold text-slate-800">Retention Rate</h4>
                 <Activity className="w-5 h-5 text-blue-500" />
@@ -499,7 +629,7 @@ const Dashboard = () => {
               <p className="text-sm text-slate-500 mt-1">Active member ratio</p>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-300 ease-out">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-semibold text-slate-800">Renewal Alert</h4>
                 <AlertCircle className="w-5 h-5 text-amber-500" />
@@ -511,14 +641,14 @@ const Dashboard = () => {
         </div>
 
         {/* Recent Members */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 ease-out">
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-lg font-semibold text-slate-800">Recent Members</h3>
                 <p className="text-sm text-slate-500">Latest additions to your gym</p>
               </div>
-              <Link to="/members" className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors">
+              <Link to="/members" className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-all duration-200">
                 View all
                 <ArrowUpRight className="w-4 h-4" />
               </Link>
@@ -528,7 +658,7 @@ const Dashboard = () => {
               <div className="min-w-full">
                 <div className="divide-y divide-gray-100">
                   {recentMembers.map((member, index) => (
-                    <div key={member._id} className="py-4 hover:bg-slate-50/80 transition-colors rounded-xl px-3 -mx-3">
+                    <div key={member._id} className="py-4 hover:bg-slate-50/80 transition-colors duration-150 ease-out rounded-xl px-3 -mx-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <div className="relative">
@@ -575,22 +705,71 @@ const Dashboard = () => {
                 </div>
                 
                 {recentMembers.length === 0 && (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Users className="w-8 h-8 text-slate-400" />
-                    </div>
-                    <h3 className="text-lg font-medium text-slate-800 mb-2">No members yet</h3>
-                    <p className="text-slate-500 mb-4">Start by adding your first gym member</p>
-                    <Link
-                      to="/members/add"
-                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all"
-                    >
-                      <Users className="w-4 h-4" />
-                      Add Member
-                    </Link>
-                  </div>
+                  <EmptyState
+                    icon={Users}
+                    title="No members yet"
+                    description="Start by adding your first gym member to see them here."
+                    action={
+                      <Link
+                        to="/members/add"
+                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all duration-200"
+                      >
+                        <Users className="w-4 h-4" />
+                        Add Member
+                      </Link>
+                    }
+                  />
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Expiring member list widget + Recent activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-slate-800">Expiring soon</h3>
+                <Link to="/reports" className="text-sm font-medium text-primary-600 hover:text-primary-700">View all</Link>
+              </div>
+              <p className="text-sm text-slate-500 mb-4">Memberships expiring in the next 30 days</p>
+              {expiringAlerts.members && expiringAlerts.members.length > 0 ? (
+                <ul className="space-y-3">
+                  {expiringAlerts.members.slice(0, 5).map((m) => (
+                    <li key={m._id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                      <Link to={`/members/${m._id}`} className="font-medium text-slate-800 hover:text-primary-600">
+                        {m.name}
+                      </Link>
+                      <span className="text-sm text-slate-500">{formatDate(m.expiryDate)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-500 py-4">No members expiring in the next 30 days.</p>
+              )}
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <History className="w-5 h-5 text-slate-500" />
+                <h3 className="text-lg font-semibold text-slate-800">Recent activity</h3>
+              </div>
+              {gymActivity.length > 0 ? (
+                <ul className="space-y-3 max-h-64 overflow-y-auto">
+                  {gymActivity.slice(0, 10).map((log) => (
+                    <li key={log._id} className="flex gap-3 py-2 border-b border-slate-100 last:border-0 text-sm">
+                      <span className="text-slate-400 flex-shrink-0">{formatDate(log.createdAt)}</span>
+                      <span className="text-slate-700">
+                        {log.memberId ? log.memberId.name : 'Member'}: {log.description || log.action}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-500 py-4">No recent activity.</p>
+              )}
             </div>
           </div>
         </div>

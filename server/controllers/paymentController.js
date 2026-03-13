@@ -1,9 +1,10 @@
 const Payment = require('../models/Payment');
 const Member = require('../models/Member');
+const { createLog } = require('../services/activityService');
 
 const addPayment = async (req, res) => {
   try {
-    const { memberId, amount, paymentType, description } = req.body;
+    const { memberId, amount, paymentType, paymentDate, description } = req.body;
 
     // Validation
     if (!memberId || !amount || !paymentType) {
@@ -21,11 +22,13 @@ const addPayment = async (req, res) => {
       memberId,
       amount: parseFloat(amount),
       paymentType,
+      ...(paymentDate && { paymentDate: new Date(paymentDate) }),
       description
     });
 
     await payment.save();
     await payment.populate('memberId', 'name phone email');
+    await createLog(req.gymId, memberId, 'payment_received', `Payment of ₹${payment.amount} received (${payment.paymentType}).`, { amount: payment.amount, paymentId: payment._id });
 
     res.status(201).json({
       message: 'Payment added successfully',
@@ -39,7 +42,7 @@ const addPayment = async (req, res) => {
 
 const getPayments = async (req, res) => {
   try {
-    const { memberId, paymentType, page = 1, limit = 10 } = req.query;
+    const { memberId, paymentType, startDate, endDate, page = 1, limit = 10 } = req.query;
     
     // Build query
     const query = { gymId: req.gymId };
@@ -50,6 +53,12 @@ const getPayments = async (req, res) => {
     
     if (paymentType && paymentType !== 'all') {
       query.paymentType = paymentType;
+    }
+
+    if (startDate || endDate) {
+      query.paymentDate = {};
+      if (startDate) query.paymentDate.$gte = new Date(startDate);
+      if (endDate) query.paymentDate.$lte = new Date(endDate);
     }
 
     const payments = await Payment.find(query)

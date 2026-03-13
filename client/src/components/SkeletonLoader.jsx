@@ -195,6 +195,27 @@ const PaymentsPageSkeleton = () => (
   </div>
 );
 
+const ReportsPageSkeleton = () => (
+  <div className="space-y-8 p-6 animate-fade-in">
+    <div className="animate-pulse-soft">
+      <div className="h-10 bg-slate-200 rounded w-1/4 mb-2 shimmer relative overflow-hidden" />
+      <div className="h-5 bg-slate-200 rounded w-1/2 shimmer relative overflow-hidden" />
+    </div>
+    <div className="flex gap-4">
+      <div className="h-10 bg-slate-200 rounded w-32 shimmer relative overflow-hidden" />
+      <div className="h-10 bg-slate-200 rounded w-28 shimmer relative overflow-hidden" />
+    </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <ChartSkeleton height={280} />
+      <ChartSkeleton height={280} />
+    </div>
+    <div className="animate-slide-up">
+      <div className="h-6 bg-slate-200 rounded w-1/3 mb-4 shimmer relative overflow-hidden" />
+      <TableSkeleton rows={4} />
+    </div>
+  </div>
+);
+
 const ButtonSkeleton = ({ width = 'w-20', height = 'h-10' }) => (
   <div className={`${width} ${height} bg-gray-200 rounded-lg shimmer animate-pulse-soft`}></div>
 );
@@ -216,6 +237,7 @@ export {
   DashboardSkeleton,
   MembersPageSkeleton,
   PaymentsPageSkeleton,
+  ReportsPageSkeleton,
   ButtonSkeleton,
   InputSkeleton,
   AvatarSkeleton

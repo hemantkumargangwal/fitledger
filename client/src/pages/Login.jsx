@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Dumbbell, Eye, EyeOff } from 'lucide-react';
+import Spinner from '../components/Spinner';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -24,8 +25,17 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
+    const email = formData.email?.trim();
+    if (!email || !email.includes('@')) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!formData.password?.trim()) {
+      setError('Please enter your password.');
+      return;
+    }
+    setLoading(true);
 
     const result = await login(formData.email, formData.password);
     
@@ -117,9 +127,10 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full btn-primary py-2 px-4 text-sm font-medium"
+                className="w-full btn-primary py-2 px-4 text-sm font-medium inline-flex items-center justify-center gap-2"
               >
-                {loading ? 'Signing in...' : 'Sign in'}
+                {loading && <Spinner className="w-4 h-4" />}
+                {loading ? 'Signing in…' : 'Sign in'}
               </button>
             </div>
           </form>

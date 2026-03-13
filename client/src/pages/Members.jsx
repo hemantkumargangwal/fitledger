@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Filter, Users, Calendar, Phone, Mail, MoreVertical, ChevronDown, UserPlus, AlertTriangle, Clock, CheckCircle, XCircle, ArrowUpDown, RefreshCw } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, Search, Edit, Trash2, Filter, Users, Calendar, Phone, Mail, MoreVertical, ChevronDown, UserPlus, AlertTriangle, Clock, CheckCircle, XCircle, ArrowUpDown, RefreshCw, User } from 'lucide-react';
 import { MembersPageSkeleton } from '../components/SkeletonLoader';
+import ConfirmDialog from '../components/ConfirmDialog';
+import Spinner from '../components/Spinner';
 // import Alert from '../components/Alert'; // Not used
 import { memberService } from '../services/memberService';
 // import { formatDate, getInitials } from '../utils/formatters'; // Unused custom imports; local ones in use
@@ -12,6 +15,9 @@ const Members = () => {
   const [showModal, setShowModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
   const [editingMember, setEditingMember] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -124,6 +130,17 @@ const Members = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormErrors({});
+    const err = {};
+    if (!formData.name?.trim()) err.name = 'Name is required';
+    if (!formData.phone?.trim()) err.phone = 'Phone is required';
+    const duration = Number(formData.planDuration);
+    if (!formData.planDuration || isNaN(duration) || duration < 1) err.planDuration = 'Plan duration must be at least 1 month';
+    if (Object.keys(err).length) {
+      setFormErrors(err);
+      return;
+    }
+    setSubmitLoading(true);
     try {
       if (editingMember) {
         await memberService.updateMember(editingMember._id, {
@@ -146,16 +163,26 @@ const Members = () => {
         planDuration: ''
       });
       fetchMembers();
+      if (window.toast) {
+        window.toast({
+          type: 'success',
+          title: editingMember ? 'Member updated' : 'Member added',
+          message: editingMember ? 'Member details saved successfully.' : 'New member added successfully.',
+          duration: 3500
+        });
+      }
     } catch (error) {
       console.error('Error saving member:', error);
       if (window.toast) {
         window.toast({
           type: 'error',
-          title: 'Save Error',
-          message: 'Failed to save member.',
-          duration: 3500,
+          title: 'Save failed',
+          message: 'Failed to save member. Please try again.',
+          duration: 3500
         });
       }
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
@@ -177,23 +204,33 @@ const Members = () => {
   };
 
   const handleDeleteConfirm = async () => {
-    if (memberToDelete) {
-      try {
-        await memberService.deleteMember(memberToDelete._id);
-        setShowDeleteDialog(false);
-        setMemberToDelete(null);
-        fetchMembers();
-      } catch (error) {
-        console.error('Error deleting member:', error);
-        if (window.toast) {
-          window.toast({
-            type: 'error',
-            title: 'Delete Error',
-            message: 'Failed to delete member.',
-            duration: 3500,
-          });
-        }
+    if (!memberToDelete) return;
+    setDeleteLoading(true);
+    try {
+      await memberService.deleteMember(memberToDelete._id);
+      setShowDeleteDialog(false);
+      setMemberToDelete(null);
+      fetchMembers();
+      if (window.toast) {
+        window.toast({
+          type: 'success',
+          title: 'Member deleted',
+          message: 'Member has been removed successfully.',
+          duration: 3500
+        });
       }
+    } catch (error) {
+      console.error('Error deleting member:', error);
+      if (window.toast) {
+        window.toast({
+          type: 'error',
+          title: 'Delete failed',
+          message: 'Failed to delete member. Please try again.',
+          duration: 3500
+        });
+      }
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -586,6 +623,14 @@ const Members = () => {
                           onClick={() => setShowDropdown(null)}
                         />
                         <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-[100]">
+                          <Link
+                            to={`/members/${member._id}`}
+                            onClick={() => setShowDropdown(null)}
+                            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 text-left"
+                          >
+                            <User className="w-4 h-4 shrink-0" />
+                            View Profile
+                          </Link>
                           <button
                             type="button"
                             onClick={() => { handleEdit(member); setShowDropdown(null); }}
@@ -706,6 +751,11 @@ const Members = () => {
                   </div>
                   
                   <div className="space-y-5">
+                    {Object.keys(formErrors).length > 0 && (
+                      <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm" role="alert">
+                        Please fix the errors below.
+                      </div>
+                    )}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Full Name *
@@ -714,11 +764,12 @@ const Members = () => {
                         type="text"
                         required
                         value={formData.name}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
-                        className="input"
+                        onChange={(e) => { setFormData({...formData, name: e.target.value}); setFormErrors((prev) => ({ ...prev, name: undefined })); }}
+                        className={`input ${formErrors.name ? 'input-error border-red-500' : ''}`}
                         placeholder="Enter member's full name"
                         autoFocus
                       />
+                      {formErrors.name && <p className="mt-1 text-xs text-red-600">{formErrors.name}</p>}
                     </div>
 
                     <div>
@@ -729,10 +780,11 @@ const Members = () => {
                         type="tel"
                         required
                         value={formData.phone}
-                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                        className="input"
+                        onChange={(e) => { setFormData({...formData, phone: e.target.value}); setFormErrors((prev) => ({ ...prev, phone: undefined })); }}
+                        className={`input ${formErrors.phone ? 'input-error border-red-500' : ''}`}
                         placeholder="Enter phone number"
                       />
+                      {formErrors.phone && <p className="mt-1 text-xs text-red-600">{formErrors.phone}</p>}
                     </div>
 
                     <div>
@@ -771,10 +823,11 @@ const Members = () => {
                           required
                           min="1"
                           value={formData.planDuration}
-                          onChange={(e) => setFormData({...formData, planDuration: e.target.value})}
-                          className="input"
+                          onChange={(e) => { setFormData({...formData, planDuration: e.target.value}); setFormErrors((prev) => ({ ...prev, planDuration: undefined })); }}
+                          className={`input ${formErrors.planDuration ? 'input-error border-red-500' : ''}`}
                           placeholder="Months"
                         />
+                        {formErrors.planDuration && <p className="mt-1 text-xs text-red-600">{formErrors.planDuration}</p>}
                       </div>
                     </div>
                   </div>
@@ -783,8 +836,10 @@ const Members = () => {
                 <div className="bg-gray-50 px-6 py-4 sm:px-6 sm:flex sm:flex-row-reverse gap-3">
                   <button
                     type="submit"
-                    className="btn-primary flex-1"
+                    disabled={submitLoading}
+                    className="btn-primary flex-1 inline-flex items-center justify-center gap-2"
                   >
+                    {submitLoading && <Spinner className="w-4 h-4" />}
                     {editingMember ? 'Update Member' : 'Add Member'}
                   </button>
                   <button
@@ -811,53 +866,26 @@ const Members = () => {
         </div>
         )}
 
-        {/* Delete Confirmation Dialog */}
-        {showDeleteDialog && memberToDelete && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" onClick={() => setShowDeleteDialog(false)}>
-              <div className="absolute inset-0 bg-gray-900 opacity-50 backdrop-blur-sm"></div>
-            </div>
-
-            <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-soft-lg transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full animate-slide-up">
-              <div className="bg-white px-6 pt-6 pb-4 sm:pb-6">
-                <div className="flex items-center justify-center w-12 h-12 bg-danger-100 rounded-full mx-auto mb-4">
-                  <Trash2 className="w-6 h-6 text-danger-600" />
-                </div>
-                <div className="text-center">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    Delete Member
-                  </h3>
-                  <p className="text-gray-600 mb-6">
-                    Are you sure you want to delete <span className="font-medium">{memberToDelete.name}</span>? 
-                    This action cannot be undone and all member data will be permanently removed.
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 px-6 py-4 sm:px-6 sm:flex sm:flex-row-reverse gap-3">
-                <button
-                  onClick={handleDeleteConfirm}
-                  className="btn-danger flex-1"
-                  type="button"
-                >
-                  Delete Member
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDeleteDialog(false);
-                    setMemberToDelete(null);
-                  }}
-                  className="btn-secondary flex-1"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        )}
+        <ConfirmDialog
+          open={showDeleteDialog && !!memberToDelete}
+          title="Delete member"
+          message={
+            memberToDelete ? (
+              <>
+                Are you sure you want to delete <strong>{memberToDelete.name}</strong>? This action cannot be undone.
+              </>
+            ) : null
+          }
+          confirmLabel="Delete member"
+          cancelLabel="Cancel"
+          danger
+          loading={deleteLoading}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => {
+            setShowDeleteDialog(false);
+            setMemberToDelete(null);
+          }}
+        />
     </div>
   );
 };

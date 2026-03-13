@@ -128,7 +128,22 @@
   
   /* Skeleton Loader */
   .skeleton {
-    @apply animate-pulse bg-gray-200 rounded;
+    @apply bg-slate-200 rounded overflow-hidden relative;
+  }
+  
+  .shimmer {
+    @apply relative overflow-hidden;
+  }
+  .shimmer::after {
+    content: '';
+    @apply absolute inset-0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.5) 50%,
+      transparent 100%
+    );
+    animation: shimmer 2s ease-in-out infinite;
   }
   
   .skeleton-text {
@@ -191,6 +206,11 @@
   .progress-bar {
     @apply bg-primary-600 h-2 rounded-full transition-all duration-300;
   }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 /* Custom Scrollbar */

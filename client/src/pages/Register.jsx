@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Dumbbell, Eye, EyeOff } from 'lucide-react';
+import Spinner from '../components/Spinner';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -27,20 +28,30 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
 
+    if (!formData.gymName?.trim()) {
+      setError('Gym name is required.');
+      return;
+    }
+    if (!formData.ownerName?.trim()) {
+      setError('Owner name is required.');
+      return;
+    }
+    if (!formData.email?.trim() || !formData.email.includes('@')) {
+      setError('Please enter a valid email address.');
+      return;
+    }
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
+      setError('Passwords do not match.');
+      return;
+    }
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters.');
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
-      setLoading(false);
-      return;
-    }
+    setLoading(true);
 
     const result = await register(
       formData.gymName,
@@ -190,9 +201,10 @@ const Register = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full btn-primary py-2 px-4 text-sm font-medium"
+                className="w-full btn-primary py-2 px-4 text-sm font-medium inline-flex items-center justify-center gap-2"
               >
-                {loading ? 'Creating account...' : 'Create account'}
+                {loading && <Spinner className="w-4 h-4" />}
+                {loading ? 'Creating account…' : 'Create account'}
               </button>
             </div>
           </form>

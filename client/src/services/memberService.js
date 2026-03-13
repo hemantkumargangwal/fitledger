@@ -13,6 +13,12 @@ export const memberService = {
     return response.data;
   },
 
+  // Get activity logs for a member
+  getMemberActivity: async (id) => {
+    const response = await api.get(`/members/${id}/activity`);
+    return response.data;
+  },
+
   // Create new member
   createMember: async (memberData) => {
     const response = await api.post('/members', memberData);

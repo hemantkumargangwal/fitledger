@@ -12,10 +12,16 @@ const pageTitles = {
   '/settings': 'Settings',
 };
 
+const getPageTitle = (pathname) => {
+  if (pageTitles[pathname]) return pageTitles[pathname];
+  if (pathname.startsWith('/members/') && pathname !== '/members/add') return 'Member Profile';
+  return 'FitLedger';
+};
+
 const Navbar = () => {
   const location = useLocation();
   const { user } = useAuth();
-  const title = pageTitles[location.pathname] ?? 'FitLedger';
+  const title = getPageTitle(location.pathname);
 
   return (
     <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-6 bg-white/80 backdrop-blur-md border-b border-slate-200/80 shadow-sm">
