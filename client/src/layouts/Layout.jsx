@@ -15,6 +15,89 @@ import {
   ChevronDown
 } from 'lucide-react';
 
+const Sidebar = ({ sidebarOpen, toggleSidebar }) => {
+  return (
+    <div className={`fixed inset-y-0 left-0 z-50 w-72 lg:hidden transform transition-transform duration-300 ease-in-out ${
+      sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+    }`}>
+      <div className="sidebar h-full flex flex-col">
+        {/* Mobile header */}
+        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-soft">
+              <Dumbbell className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-gray-900">FitLedger</span>
+          </div>
+          <button
+            onClick={toggleSidebar}
+            className="btn-ghost p-2"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        {/* Navigation */}
+        <nav className="flex-1 px-4 py-6 space-y-1">
+          {navigation.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={`sidebar-item ${
+                  isActive(item.href) 
+                    ? 'sidebar-item-active' 
+                    : 'sidebar-item-inactive'
+                }`}
+                onClick={toggleSidebar}
+              >
+                <Icon className="w-5 h-5" />
+                <div className="flex-1">
+                  <div className="font-medium">{item.name}</div>
+                  <div className="text-xs text-gray-500">{item.description}</div>
+                </div>
+                {isActive(item.href) && (
+                  <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+        
+        {/* User profile */}
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="relative">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center shadow-soft">
+                <span className="text-white font-semibold">
+                  {user?.name?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-success-500 border-2 border-white rounded-full"></div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {user?.name}
+              </p>
+              <p className="text-xs text-gray-500 truncate">
+                {user?.gymName}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="sidebar-item-inactive w-full justify-center"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -74,8 +157,8 @@ const Layout = ({ children }) => {
               <span className="text-xl font-bold text-gray-900">FitLedger</span>
             </div>
             <button
-              onClick={() => setSidebarOpen(false)}
-              className="btn-ghost p-2"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="lg:hidden p-2"
             >
               <X className="w-5 h-5" />
             </button>
