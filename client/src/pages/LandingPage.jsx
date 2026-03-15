@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import Seo from '../components/Seo';
 import { 
   Dumbbell, 
   Users, 
@@ -138,53 +139,108 @@ const LandingPage = () => {
     },
     {
       question: 'How does the free trial work?',
-      answer: 'Start with a 14-day free trial with full access to all features. No credit card required. After the trial, choose the plan that best fits your needs.'
+      answer: 'Start with a 90-day free trial with full access to all features. No credit card required. After the trial, choose the plan that best fits your gym size and member count.'
     }
   ];
 
   const pricing = [
     {
       name: 'Starter',
-      price: '29',
-      description: 'Perfect for small gyms and fitness studios',
+      price: '199',
+      description: 'Best for gyms with up to 100 active members',
       features: [
-        'Up to 50 members',
-        'Basic member management',
+        'Up to 100 members',
+        'Member management',
         'Payment tracking',
-        'Email support',
+        'Renewal reminders',
+        'Reports dashboard',
         'Mobile access'
       ],
       highlighted: false
     },
     {
-      name: 'Professional',
-      price: '79',
-      description: 'Ideal for growing gyms with multiple trainers',
+      name: 'Growth',
+      price: '299',
+      description: 'Perfect for growing gyms managing up to 200 members',
       features: [
         'Up to 200 members',
         'Advanced analytics',
         'Automated notifications',
-        'Priority support',
+        'Payment tracking',
         'Custom reports',
-        'Data export'
+        'Priority support'
       ],
       highlighted: true
     },
     {
       name: 'Enterprise',
-      price: '199',
-      description: 'Complete solution for large fitness chains',
+      price: '599',
+      description: 'For high-volume gyms that need unlimited member management',
       features: [
         'Unlimited members',
-        'Multi-gym management',
-        'Custom integrations',
+        'Advanced analytics',
+        'Automated notifications',
+        'Custom reports',
         'Dedicated support',
-        'White-label options',
-        'API access'
+        'All core features included'
       ],
       highlighted: false
     }
   ];
+
+  const landingPageSchema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': 'https://fitledger.brainstacks.in/#organization',
+        name: 'FitLedger',
+        url: 'https://fitledger.brainstacks.in/',
+        logo: 'https://fitledger.brainstacks.in/favicon.svg',
+        contactPoint: [
+          {
+            '@type': 'ContactPoint',
+            contactType: 'sales',
+            url: 'https://fitledger.brainstacks.in/register'
+          }
+        ]
+      },
+      {
+        '@type': 'WebSite',
+        '@id': 'https://fitledger.brainstacks.in/#website',
+        url: 'https://fitledger.brainstacks.in/',
+        name: 'FitLedger',
+        publisher: {
+          '@id': 'https://fitledger.brainstacks.in/#organization'
+        }
+      },
+      {
+        '@type': 'SoftwareApplication',
+        name: 'FitLedger',
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web',
+        url: 'https://fitledger.brainstacks.in/',
+        description: 'FitLedger helps gyms manage memberships, payments, renewals, analytics and daily operations from one place.',
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'INR',
+          description: '90-day free trial'
+        }
+      },
+      {
+        '@type': 'FAQPage',
+        mainEntity: faqs.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: faq.answer
+          }
+        }))
+      }
+    ]
+  };
 
   const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId);
@@ -196,6 +252,19 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+      <Seo
+        title="FitLedger | Best Gym Management Software"
+        description="FitLedger is gym management software that helps fitness businesses manage members, payments, renewals, analytics and reports from one dashboard."
+        path="/"
+        keywords={[
+          'gym management software',
+          'gym membership software',
+          'fitness center management software',
+          'gym payment tracking software',
+          'gym CRM'
+        ]}
+        schema={landingPageSchema}
+      />
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-xl border-b border-gray-200 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -248,6 +317,7 @@ const LandingPage = () => {
       </nav>
 
       {/* Hero Section */}
+      <main>
       <section id="hero" className="relative pt-24 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary-50 via-transparent to-transparent"></div>
         <div className="max-w-7xl mx-auto relative">
@@ -289,7 +359,7 @@ const LandingPage = () => {
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-success-500" />
-                14-day free trial
+                90-day free trial
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-success-500" />
@@ -512,7 +582,7 @@ const LandingPage = () => {
               Simple, Transparent Pricing
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Choose the perfect plan for your gym. Start with a 14-day free trial.
+              Choose the right plan for your gym size. Start with a 90-day free trial.
             </p>
           </div>
 
@@ -628,7 +698,7 @@ const LandingPage = () => {
               </Link>
             </div>
             <p className="text-sm text-gray-500 mt-6">
-              No credit card required • 14-day free trial • Cancel anytime
+              No credit card required • 90-day free trial • Cancel anytime
             </p>
           </div>
         </div>
@@ -710,6 +780,7 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
+      </main>
 
       {/* Video Modal */}
       {isVideoModalOpen && (

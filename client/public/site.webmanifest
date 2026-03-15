@@ -1,0 +1,16 @@
+{
+  "name": "FitLedger",
+  "short_name": "FitLedger",
+  "description": "Gym management software for member tracking, payments, renewals and reports.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f766e",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Dumbbell, Eye, EyeOff } from 'lucide-react';
 import Spinner from '../components/Spinner';
+import Seo from '../components/Seo';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -71,6 +72,12 @@ const Register = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <Seo
+        title="Start Your Free Trial"
+        description="Create your FitLedger account and start a free trial for gym member management, payment tracking and reporting."
+        path="/register"
+        robots="noindex, nofollow"
+      />
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
           <Dumbbell className="w-12 h-12 text-primary-600" />

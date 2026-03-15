@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
+import Seo from '../components/Seo';
 
 const DashboardLayout = () => {
   const location = useLocation();
@@ -14,6 +15,12 @@ const DashboardLayout = () => {
 
   return (
     <div className="flex h-screen bg-slate-50/80">
+      <Seo
+        title="Dashboard"
+        description="Secure FitLedger dashboard for managing gym members, subscriptions, payments, and reports."
+        path={location.pathname}
+        robots="noindex, nofollow"
+      />
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}

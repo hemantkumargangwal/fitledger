@@ -1,0 +1,26 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" rx="36" fill="url(#paint0_linear)"/>
+  <rect x="64" y="64" width="1072" height="502" rx="28" fill="#0F172A" fill-opacity="0.18"/>
+  <rect x="92" y="92" width="1016" height="446" rx="24" fill="#08111E" fill-opacity="0.72" stroke="#5EEAD4" stroke-opacity="0.28"/>
+  <circle cx="170" cy="170" r="44" fill="#14B8A6"/>
+  <path d="M149 171.5C149 159.074 159.074 149 171.5 149C183.926 149 194 159.074 194 171.5V193H149V171.5Z" fill="white"/>
+  <path d="M171.5 141C178.404 141 184 135.404 184 128.5C184 121.596 178.404 116 171.5 116C164.596 116 159 121.596 159 128.5C159 135.404 164.596 141 171.5 141Z" fill="white"/>
+  <text x="238" y="184" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="62" font-weight="700">FitLedger</text>
+  <text x="96" y="294" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="76" font-weight="700">Gym Management Software</text>
+  <text x="96" y="370" fill="#CFFAFE" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="500">Manage memberships, payments, renewals and growth from one dashboard.</text>
+  <rect x="96" y="428" width="236" height="62" rx="18" fill="#14B8A6"/>
+  <text x="132" y="468" fill="#042F2E" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700">14-day free trial</text>
+  <rect x="792" y="148" width="228" height="132" rx="20" fill="white" fill-opacity="0.1" stroke="white" stroke-opacity="0.12"/>
+  <text x="826" y="200" fill="#99F6E4" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="600">Members</text>
+  <text x="826" y="248" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="52" font-weight="700">1,284</text>
+  <rect x="792" y="310" width="228" height="132" rx="20" fill="white" fill-opacity="0.1" stroke="white" stroke-opacity="0.12"/>
+  <text x="826" y="362" fill="#99F6E4" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="600">Revenue</text>
+  <text x="826" y="410" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="52" font-weight="700">$24.5K</text>
+  <defs>
+    <linearGradient id="paint0_linear" x1="82.5" y1="16" x2="1104" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F766E"/>
+      <stop offset="0.55" stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#1D4ED8"/>
+    </linearGradient>
+  </defs>
+</svg>
