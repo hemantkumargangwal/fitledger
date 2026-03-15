@@ -16,22 +16,31 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      api.get('/auth/profile')
-        .then(response => {
+    const bootstrap = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const response = await api.get('/auth/profile');
           setUser(response.data.user);
-        })
-        .catch(() => {
+        } catch {
           localStorage.removeItem('token');
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
+        }
+      }
       setLoading(false);
-    }
+    };
+
+    bootstrap();
   }, []);
+
+  const refreshProfile = async () => {
+    const response = await api.get('/auth/profile');
+    setUser(response.data.user);
+    return response.data.user;
+  };
+
+  const updateUser = (nextUser) => {
+    setUser(nextUser);
+  };
 
   const login = async (email, password) => {
     try {
@@ -82,6 +91,8 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    refreshProfile,
+    updateUser,
     loading
   };
 

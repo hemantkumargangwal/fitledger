@@ -1,12 +1,11 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, UserPlus, DollarSign, CreditCard, FileText, Settings, LogOut, Dumbbell, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Home, Users, IndianRupee, CreditCard, FileText, Settings, LogOut, Dumbbell, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const navItems = [
   { to: '/dashboard', icon: Home, label: 'Dashboard' },
   { to: '/members', icon: Users, label: 'Members' },
-  { to: '/members/add', icon: UserPlus, label: 'Add Member' },
-  { to: '/payments', icon: DollarSign, label: 'Payments' },
+  { to: '/payments', icon: IndianRupee, label: 'Payments' },
   { to: '/payments/add', icon: CreditCard, label: 'Add Payment' },
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/settings', icon: Settings, label: 'Settings' },

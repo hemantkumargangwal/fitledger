@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 const pageTitles = {
   '/dashboard': 'Dashboard',
   '/members': 'Members',
-  '/members/add': 'Add Member',
   '/payments': 'Payments',
   '/payments/add': 'Add Payment',
   '/reports': 'Reports',
@@ -14,7 +13,7 @@ const pageTitles = {
 
 const getPageTitle = (pathname) => {
   if (pageTitles[pathname]) return pageTitles[pathname];
-  if (pathname.startsWith('/members/') && pathname !== '/members/add') return 'Member Profile';
+  if (pathname.startsWith('/members/')) return 'Member Profile';
   return 'FitLedger';
 };
 

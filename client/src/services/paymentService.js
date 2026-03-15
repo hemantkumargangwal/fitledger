@@ -45,6 +45,9 @@ export const paymentService = {
     return response.data;
   },
 
+  // Format currency
+  formatCurrency: (amount) => { return `₹${amount.toFixed(2)}`; },
+
   // Get payment modes distribution
   getPaymentModes: async () => {
     const response = await api.get('/payments/modes');

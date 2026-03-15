@@ -3,10 +3,7 @@ const Gym = require('../models/Gym');
 const User = require('../models/User');
 const validator = require('validator');
 
-const generateToken = (userId) => {
-  console.log("process.env.JWT_SECRET", process.env.JWT_SECRET);
-  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
-};
+const generateToken = (userId) => jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
 const register = async (req, res) => {
   try {
@@ -119,7 +116,9 @@ const getProfile = async (req, res) => {
         email: user.email,
         gymId: user.gymId._id,
         gymName: user.gymId.gymName,
-        ownerName: user.gymId.ownerName
+        ownerName: user.gymId.ownerName,
+        phone: user.gymId.phone || '',
+        address: user.gymId.address || ''
       }
     });
   } catch (error) {
@@ -128,8 +127,72 @@ const getProfile = async (req, res) => {
   }
 };
 
+const updateProfile = async (req, res) => {
+  try {
+    const { name, email, gymName, ownerName, phone, address, password } = req.body;
+    const user = await User.findById(req.user.id).populate('gymId');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (email && !validator.isEmail(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+
+    const nextEmail = email?.trim().toLowerCase() || user.email;
+    if (nextEmail !== user.email) {
+      const existingUser = await User.findOne({ email: nextEmail, _id: { $ne: user._id } });
+      if (existingUser) {
+        return res.status(400).json({ message: 'Email already in use' });
+      }
+
+      const existingGym = await Gym.findOne({ email: nextEmail, _id: { $ne: user.gymId._id } });
+      if (existingGym) {
+        return res.status(400).json({ message: 'Gym email already in use' });
+      }
+    }
+
+    if (name?.trim()) user.name = name.trim();
+    if (email?.trim()) user.email = nextEmail;
+    if (password) {
+      if (password.length < 6) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters' });
+      }
+      user.password = password;
+    }
+
+    if (gymName?.trim()) user.gymId.gymName = gymName.trim();
+    if (ownerName?.trim()) user.gymId.ownerName = ownerName.trim();
+    user.gymId.email = nextEmail;
+    user.gymId.phone = phone?.trim() || '';
+    user.gymId.address = address?.trim() || '';
+
+    await user.save();
+    await user.gymId.save();
+
+    res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        gymId: user.gymId._id,
+        gymName: user.gymId.gymName,
+        ownerName: user.gymId.ownerName,
+        phone: user.gymId.phone || '',
+        address: user.gymId.address || ''
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   register,
   login,
-  getProfile
+  getProfile,
+  updateProfile
 };

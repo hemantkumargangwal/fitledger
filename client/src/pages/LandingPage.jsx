@@ -16,7 +16,7 @@ import {
   Target,
   Award,
   Clock,
-  DollarSign,
+  IndianRupee,
   Calendar,
   CreditCard,
   Smartphone as PhoneIcon,
@@ -52,7 +52,7 @@ const LandingPage = () => {
       details: ['Member profiles', 'Membership tracking', 'Automated notifications', 'Bulk operations']
     },
     {
-      icon: DollarSign,
+      icon: IndianRupee,
       title: 'Payment Tracking',
       description: 'Streamline payment collection with multiple payment methods, automated receipts, and comprehensive revenue analytics.',
       gradient: 'from-green-500 to-emerald-500',
@@ -536,7 +536,7 @@ const LandingPage = () => {
                   <p className="text-gray-600 mb-6">{plan.description}</p>
                   
                   <div className="mb-6">
-                    <span className="text-4xl font-bold text-gray-900">${plan.price}</span>
+                    <span className="text-4xl font-bold text-gray-900">₹{plan.price}</span>
                     <span className="text-gray-600">/month</span>
                   </div>
 

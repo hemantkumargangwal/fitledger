@@ -207,7 +207,7 @@ class DashboardService {
       })),
       ...recentPayments.map(payment => ({
         type: 'payment_received',
-        description: `Payment of $${payment.amount} received from ${payment.memberId?.name || 'Unknown'}`,
+        description: `Payment of ₹${payment.amount} received from ${payment.memberId?.name || 'Unknown'}`,
         timestamp: payment.date,
         data: payment,
       })),

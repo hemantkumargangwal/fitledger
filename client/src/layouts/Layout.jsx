@@ -43,7 +43,7 @@ const Sidebar = ({ sidebarOpen, toggleSidebar }) => {
             const Icon = item.icon;
             return (
               <Link
-                key={item.name}
+                key={item.name} 
                 to={item.href}
                 className={`sidebar-item ${
                   isActive(item.href) 

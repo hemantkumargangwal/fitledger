@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Edit, Trash2, Filter, Users, Calendar, Phone, Mail, MoreVertical, ChevronDown, UserPlus, AlertTriangle, Clock, CheckCircle, XCircle, ArrowUpDown, RefreshCw, User } from 'lucide-react';
 import { MembersPageSkeleton } from '../components/SkeletonLoader';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -28,6 +28,7 @@ const Members = () => {
   const [showDropdown, setShowDropdown] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -41,6 +42,27 @@ const Members = () => {
     fetchMembers();
     // eslint-disable-next-line
   }, [currentPage, searchTerm, statusFilter, sortBy, sortOrder]);
+
+  const resetForm = () => {
+    setEditingMember(null);
+    setFormData({
+      name: '',
+      phone: '',
+      email: '',
+      joiningDate: '',
+      planDuration: ''
+    });
+    setFormErrors({});
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    resetForm();
+    const params = new URLSearchParams(searchParams);
+    params.delete('modal');
+    params.delete('edit');
+    setSearchParams(params, { replace: true });
+  };
 
   const fetchMembers = async () => {
     try {
@@ -59,15 +81,6 @@ const Members = () => {
       setMembers(response && response.members ? response.members : []);
       setTotalPages(response && typeof response.totalPages === 'number' ? response.totalPages : 1);
 
-      // Show success toast if available
-      if (window.toast) {
-        window.toast({
-          type: 'success',
-          title: 'Members Loaded',
-          message: `Loaded ${response.members?.length || 0} members successfully`,
-          duration: 3000
-        });
-      }
     } catch (e) {
       console.error('Error fetching members:', e);
       setError(ERROR_MESSAGES && ERROR_MESSAGES.NETWORK_ERROR ? ERROR_MESSAGES.NETWORK_ERROR : "Error fetching members");
@@ -90,6 +103,52 @@ const Members = () => {
     setRefreshing(true);
     fetchMembers();
   };
+
+  useEffect(() => {
+    const modal = searchParams.get('modal');
+    const editId = searchParams.get('edit');
+
+    if (modal === 'add') {
+      resetForm();
+      setShowModal(true);
+      return;
+    }
+
+    if (editId) {
+      memberService.getMemberById(editId)
+        .then((response) => {
+          const member = response.member;
+          setEditingMember(member);
+          setFormData({
+            name: member.name || '',
+            phone: member.phone || '',
+            email: member.email || '',
+            joiningDate: member.joiningDate ? new Date(member.joiningDate).toISOString().split('T')[0] : '',
+            planDuration: member.planDuration ? String(member.planDuration) : ''
+          });
+          setShowModal(true);
+        })
+        .catch(() => {
+          const params = new URLSearchParams(searchParams);
+          params.delete('edit');
+          setSearchParams(params, { replace: true });
+          if (window.toast) {
+            window.toast({
+              type: 'error',
+              title: 'Member not found',
+              message: 'The selected member could not be loaded for editing.',
+              duration: 3500
+            });
+          }
+        });
+      return;
+    }
+
+    if (!showModal) {
+      resetForm();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const setMockMembers = () => {
     const mockMembers = [
@@ -153,15 +212,7 @@ const Members = () => {
           planDuration: Number(formData.planDuration)
         });
       }
-      setShowModal(false);
-      setEditingMember(null);
-      setFormData({
-        name: '',
-        phone: '',
-        email: '',
-        joiningDate: '',
-        planDuration: ''
-      });
+      closeModal();
       fetchMembers();
       if (window.toast) {
         window.toast({
@@ -187,15 +238,7 @@ const Members = () => {
   };
 
   const handleEdit = (member) => {
-    setEditingMember(member);
-    setFormData({
-      name: member.name,
-      phone: member.phone,
-      email: member.email || '',
-      joiningDate: member.joiningDate ? new Date(member.joiningDate).toISOString().split('T')[0] : '',
-      planDuration: member.planDuration ? String(member.planDuration) : ''
-    });
-    setShowModal(true);
+    setSearchParams({ edit: member._id }, { replace: true });
   };
 
   const handleDeleteClick = (member) => {
@@ -323,7 +366,7 @@ const Members = () => {
         member.name?.toLowerCase().includes(term) ||
         (member.phone && member.phone.includes(term)) ||
         (member.email && member.email.toLowerCase().includes(term));
-      const matchesStatus = statusFilter === 'all' || member.status === statusFilter;
+      const matchesStatus = statusFilter === 'all' || getExpiryStatus(member.expiryDate).status === statusFilter;
       return matchesSearch && matchesStatus;
     })
     // Sort as per selection
@@ -387,7 +430,7 @@ const Members = () => {
               Export
             </button>
             <button
-              onClick={() => setShowModal(true)}
+              onClick={() => setSearchParams({ modal: 'add' }, { replace: true })}
               className="btn-primary"
               type="button"
             >
@@ -428,7 +471,7 @@ const Members = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Expiring Soon</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {members.filter(m => m.status === 'expiring').length}
+                  {members.filter(m => getExpiryStatus(m.expiryDate).status === 'expiring').length}
                 </p>
               </div>
               <div className="w-10 h-10 bg-warning-100 rounded-xl flex items-center justify-center">
@@ -669,7 +712,7 @@ const Members = () => {
                     }
                   </p>
                   <button
-                    onClick={() => setShowModal(true)}
+                    onClick={() => setSearchParams({ modal: 'add' }, { replace: true })}
                     className="btn-primary"
                     type="button"
                   >
@@ -730,7 +773,7 @@ const Members = () => {
         {showModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" onClick={() => setShowModal(false)}>
+            <div className="fixed inset-0 transition-opacity" onClick={closeModal}>
               <div className="absolute inset-0 bg-gray-900 opacity-50 backdrop-blur-sm"></div>
             </div>
 
@@ -743,7 +786,7 @@ const Members = () => {
                     </h3>
                     <button
                       type="button"
-                      onClick={() => setShowModal(false)}
+                      onClick={closeModal}
                       className="btn-ghost p-2"
                     >
                       ×
@@ -844,17 +887,7 @@ const Members = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowModal(false);
-                      setEditingMember(null);
-                      setFormData({
-                        name: '',
-                        phone: '',
-                        email: '',
-                        joiningDate: '',
-                        planDuration: ''
-                      });
-                    }}
+                    onClick={closeModal}
                     className="btn-secondary flex-1"
                   >
                     Cancel

@@ -6,7 +6,6 @@ import Register from './pages/Register';
 import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import Members from './pages/Members';
-import AddMember from './pages/AddMember';
 import Payments from './pages/Payments';
 import AddPayment from './pages/AddPayment';
 import Reports from './pages/Reports';
@@ -33,7 +32,6 @@ function App() {
           >
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="members" element={<Members />} />
-            <Route path="members/add" element={<AddMember />} />
             <Route path="members/:id" element={<MemberProfile />} />
             <Route path="payments" element={<Payments />} />
             <Route path="payments/add" element={<AddPayment />} />

@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, TrendingUp, CreditCard, AlertCircle, ArrowUpRight, ArrowDownRight, Calendar, DollarSign, Activity, PieChart as PieChartIcon, RefreshCw, UserPlus, CalendarClock, AlertTriangle, History } from 'lucide-react';
+import { Users, TrendingUp, CreditCard, AlertCircle, ArrowUpRight, ArrowDownRight, Calendar, IndianRupee, Activity, PieChart as PieChartIcon, RefreshCw, UserPlus, CalendarClock, AlertTriangle, History } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { DashboardSkeleton } from '../components/SkeletonLoader';
 import Alert from '../components/Alert';
 import EmptyState from '../components/EmptyState';
 import { dashboardService } from '../services/dashboardService';
 import { formatCurrency } from '../utils/formatters';
-import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../utils/constants';
+import { ERROR_MESSAGES } from '../utils/constants';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -60,16 +60,6 @@ const Dashboard = () => {
           : [{ name: 'No payments yet', value: 100, color: '#e2e8f0' }]
       );
       setRecentMembers(recentMembersData.members);
-      
-      // Show success toast on successful data fetch
-      if (window.toast) {
-        window.toast({
-          type: 'success',
-          title: 'Dashboard Updated',
-          message: SUCCESS_MESSAGES.DASHBOARD_UPDATED || 'Latest data has been loaded successfully',
-          duration: 3000
-        });
-      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       setError(ERROR_MESSAGES.NETWORK_ERROR);
@@ -136,7 +126,7 @@ const Dashboard = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString('en-IN', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
@@ -293,7 +283,7 @@ const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/20 group-hover:scale-105 transition-transform duration-300">
-                    <DollarSign className="w-5 h-5 text-white" />
+                    <IndianRupee className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-slate-500">Revenue (this month)</p>
@@ -426,7 +416,7 @@ const Dashboard = () => {
             <div className="flex items-start justify-between">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/20 group-hover:scale-105 transition-transform duration-300">
-                  <DollarSign className="w-6 h-6 text-white" />
+                  <IndianRupee className="w-6 h-6 text-white" />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-slate-500">Revenue (30 days)</p>
@@ -501,7 +491,7 @@ const Dashboard = () => {
                 <p className="text-sm text-slate-500">Monthly revenue performance</p>
               </div>
               <div className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
-                <DollarSign className="w-3 h-3 mr-1" />
+                <IndianRupee className="w-3 h-3 mr-1" />
                 +8.2%
               </div>
             </div>
@@ -599,7 +589,7 @@ const Dashboard = () => {
             <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-300 ease-out">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-semibold text-slate-800">Avg. Member Value</h4>
-                <DollarSign className="w-5 h-5 text-violet-500" />
+                <IndianRupee className="w-5 h-5 text-violet-500" />
               </div>
               <div className="text-xl font-bold text-slate-800">
                 {formatCurrency(stats.totalMembers > 0 ? stats.totalRevenue / stats.totalMembers : 0)}
@@ -711,7 +701,7 @@ const Dashboard = () => {
                     description="Start by adding your first gym member to see them here."
                     action={
                       <Link
-                        to="/members/add"
+                        to="/members?modal=add"
                         className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all duration-200"
                       >
                         <Users className="w-4 h-4" />

@@ -1,5 +1,5 @@
 // Currency formatter
-export const formatCurrency = (amount, currency = 'USD', locale = 'en-US') => {
+export const formatCurrency = (amount, currency = 'INR', locale = 'en-IN') => {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
@@ -17,7 +17,7 @@ export const formatDate = (date, options = {}) => {
   };
   
   const dateObj = new Date(date);
-  return dateObj.toLocaleDateString('en-US', { ...defaultOptions, ...options });
+  return dateObj.toLocaleDateString('en-IN', { ...defaultOptions, ...options });
 };
 
 // Relative time formatter

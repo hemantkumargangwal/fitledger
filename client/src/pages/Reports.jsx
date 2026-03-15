@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { TrendingUp, DollarSign, CalendarClock } from 'lucide-react';
+import { TrendingUp, IndianRupee, CalendarClock } from 'lucide-react';
 import { dashboardService } from '../services/dashboardService';
 import ChartCard from '../components/ChartCard';
 import DataTable from '../components/DataTable';
@@ -114,7 +114,7 @@ const Reports = () => {
             <div className="h-72">
               {revenueChartData.length === 0 ? (
                 <EmptyState
-                  icon={DollarSign}
+                  icon={IndianRupee}
                   title="No revenue data"
                   description={`No payments recorded for the selected period (${period}). Add payments to see revenue trends.`}
                 />
