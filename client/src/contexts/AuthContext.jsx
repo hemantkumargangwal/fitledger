@@ -42,9 +42,9 @@ export const AuthProvider = ({ children }) => {
     setUser(nextUser);
   };
 
-  const login = async (email, password) => {
+  const login = async (identifier, password) => {
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post('/auth/login', { identifier, password });
       const { token, user } = response.data;
 
       localStorage.setItem('token', token);
@@ -59,13 +59,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (gymName, ownerName, email, password) => {
+  const register = async (gymName, ownerName, email, password, phone = '') => {
     try {
       const response = await api.post('/auth/register', {
         gymName,
         ownerName,
         email,
-        password
+        password,
+        phone
       });
       const { token, user } = response.data;
 

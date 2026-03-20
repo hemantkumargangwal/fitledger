@@ -23,6 +23,18 @@ const userSchema = new mongoose.Schema({
     required: true,
     minlength: 6
   },
+  resetPasswordOtpHash: {
+    type: String,
+    default: null
+  },
+  resetPasswordOtpExpires: {
+    type: Date,
+    default: null
+  },
+  resetPasswordOtpAttempts: {
+    type: Number,
+    default: 0
+  },
   role: {
     type: String,
     enum: ['owner', 'staff'],

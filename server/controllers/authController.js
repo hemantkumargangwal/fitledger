@@ -1,13 +1,17 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const Gym = require('../models/Gym');
 const User = require('../models/User');
 const validator = require('validator');
+const { sendPasswordResetOtp } = require('../services/emailService');
 
 const generateToken = (userId) => jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+const normalizePhone = (value = '') => value.replace(/\D/g, '');
+const hashOtp = (otp) => crypto.createHash('sha256').update(String(otp)).digest('hex');
 
 const register = async (req, res) => {
   try {
-    const { gymName, ownerName, email, password } = req.body;
+    const { gymName, ownerName, email, password, phone } = req.body;
 
     // Validation
     if (!gymName || !ownerName || !email || !password) {
@@ -32,7 +36,8 @@ const register = async (req, res) => {
     const gym = new Gym({
       gymName,
       ownerName,
-      email
+      email,
+      phone: phone?.trim() || ''
     });
     await gym.save();
 
@@ -67,15 +72,35 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { identifier, email, password } = req.body;
+    const loginId = (identifier || email || '').trim();
 
     // Validation
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
+    if (!loginId || !password) {
+      return res.status(400).json({ message: 'Email/phone and password are required' });
     }
 
-    // Find user
-    const user = await User.findOne({ email }).populate('gymId');
+    let user = null;
+
+    if (validator.isEmail(loginId)) {
+      user = await User.findOne({ email: loginId.toLowerCase() }).populate('gymId');
+    } else {
+      const exactPhoneGym = await Gym.findOne({ phone: loginId });
+
+      if (exactPhoneGym) {
+        user = await User.findOne({ gymId: exactPhoneGym._id }).populate('gymId');
+      }
+
+      if (!user) {
+        const normalizedInput = normalizePhone(loginId);
+        const gyms = await Gym.find({ phone: { $exists: true, $ne: '' } });
+        const matchedGym = gyms.find((gym) => normalizePhone(gym.phone) === normalizedInput);
+        if (matchedGym) {
+          user = await User.findOne({ gymId: matchedGym._id }).populate('gymId');
+        }
+      }
+    }
+
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -190,9 +215,98 @@ const updateProfile = async (req, res) => {
   }
 };
 
+const forgotPassword = async (req, res) => {
+  try {
+    const email = req.body.email?.trim().toLowerCase();
+    if (!email || !validator.isEmail(email)) {
+      return res.status(400).json({ message: 'Please enter a valid email address.' });
+    }
+
+    const user = await User.findOne({ email }).populate('gymId');
+    if (!user) {
+      return res.json({ message: 'If an account exists for this email, an OTP has been sent.' });
+    }
+
+    const otp = String(crypto.randomInt(100000, 999999));
+    user.resetPasswordOtpHash = hashOtp(otp);
+    user.resetPasswordOtpExpires = new Date(Date.now() + (10 * 60 * 1000));
+    user.resetPasswordOtpAttempts = 0;
+    await user.save();
+
+    await sendPasswordResetOtp({
+      toEmail: user.email,
+      ownerName: user.name || user.gymId?.ownerName,
+      otp
+    });
+
+    res.json({ message: 'If an account exists for this email, an OTP has been sent.' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Unable to send OTP right now. Please try again later.' });
+  }
+};
+
+const resetPasswordWithOtp = async (req, res) => {
+  try {
+    const email = req.body.email?.trim().toLowerCase();
+    const otp = req.body.otp?.trim();
+    const newPassword = req.body.newPassword;
+
+    if (!email || !validator.isEmail(email)) {
+      return res.status(400).json({ message: 'Please enter a valid email address.' });
+    }
+    if (!otp || otp.length !== 6) {
+      return res.status(400).json({ message: 'Please enter a valid 6-digit OTP.' });
+    }
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user || !user.resetPasswordOtpHash || !user.resetPasswordOtpExpires) {
+      return res.status(400).json({ message: 'OTP is invalid or has expired.' });
+    }
+
+    if (user.resetPasswordOtpExpires < new Date()) {
+      user.resetPasswordOtpHash = null;
+      user.resetPasswordOtpExpires = null;
+      user.resetPasswordOtpAttempts = 0;
+      await user.save();
+      return res.status(400).json({ message: 'OTP is invalid or has expired.' });
+    }
+
+    user.resetPasswordOtpAttempts = (user.resetPasswordOtpAttempts || 0) + 1;
+    if (user.resetPasswordOtpAttempts > 5) {
+      user.resetPasswordOtpHash = null;
+      user.resetPasswordOtpExpires = null;
+      user.resetPasswordOtpAttempts = 0;
+      await user.save();
+      return res.status(400).json({ message: 'Too many invalid attempts. Please request a new OTP.' });
+    }
+
+    if (user.resetPasswordOtpHash !== hashOtp(otp)) {
+      await user.save();
+      return res.status(400).json({ message: 'OTP is invalid or has expired.' });
+    }
+
+    user.password = newPassword;
+    user.resetPasswordOtpHash = null;
+    user.resetPasswordOtpExpires = null;
+    user.resetPasswordOtpAttempts = 0;
+    await user.save();
+
+    res.json({ message: 'Password reset successfully. Please log in with your new password.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Unable to reset password right now. Please try again later.' });
+  }
+};
+
 module.exports = {
   register,
   login,
   getProfile,
-  updateProfile
+  updateProfile,
+  forgotPassword,
+  resetPasswordWithOtp
 };

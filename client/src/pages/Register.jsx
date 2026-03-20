@@ -9,6 +9,7 @@ const Register = () => {
   const [formData, setFormData] = useState({
     gymName: '',
     ownerName: '',
+    phone: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -58,7 +59,8 @@ const Register = () => {
       formData.gymName,
       formData.ownerName,
       formData.email,
-      formData.password
+      formData.password,
+      formData.phone
     );
     
     if (result.success) {
@@ -134,6 +136,23 @@ const Register = () => {
                   onChange={handleChange}
                   className="input"
                   placeholder="Enter your full name"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                Phone Number
+              </label>
+              <div className="mt-1">
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className="input"
+                  placeholder="Enter your phone number"
                 />
               </div>
             </div>

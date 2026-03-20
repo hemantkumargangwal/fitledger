@@ -7,7 +7,7 @@ import Seo from '../components/Seo';
 
 const Login = () => {
   const [formData, setFormData] = useState({
-    email: '',
+    identifier: '',
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -27,9 +27,9 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    const email = formData.email?.trim();
-    if (!email || !email.includes('@')) {
-      setError('Please enter a valid email address.');
+    const identifier = formData.identifier?.trim();
+    if (!identifier) {
+      setError('Please enter your email or phone number.');
       return;
     }
     if (!formData.password?.trim()) {
@@ -38,7 +38,7 @@ const Login = () => {
     }
     setLoading(true);
 
-    const result = await login(formData.email, formData.password);
+    const result = await login(formData.identifier, formData.password);
     
     if (result.success) {
       navigate('/dashboard');
@@ -82,20 +82,20 @@ const Login = () => {
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
+              <label htmlFor="identifier" className="block text-sm font-medium text-gray-700">
+                Email or phone number
               </label>
               <div className="mt-1">
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
+                  id="identifier"
+                  name="identifier"
+                  type="text"
+                  autoComplete="username"
                   required
-                  value={formData.email}
+                  value={formData.identifier}
                   onChange={handleChange}
                   className="input"
-                  placeholder="Enter your email"
+                  placeholder="Enter your email or phone"
                 />
               </div>
             </div>
@@ -128,6 +128,11 @@ const Login = () => {
                   )}
                 </button>
               </div>
+              <div className="mt-2 text-right">
+                <Link to="/forgot-password" className="text-sm font-medium text-primary-600 hover:text-primary-500">
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
             <div>
@@ -154,7 +159,7 @@ const Login = () => {
 
             <div className="mt-6 text-center">
               <p className="text-xs text-gray-500">
-                Email: demo@fitledger.com<br />
+                Email/Phone: demo@fitledger.com<br />
                 Password: demo123
               </p>
             </div>
