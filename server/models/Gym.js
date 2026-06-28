@@ -25,6 +25,22 @@ const gymSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  trialStartsAt: {
+    type: Date,
+    default: Date.now
+  },
+  trialEndsAt: {
+    type: Date,
+    default: () => {
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 90);
+      return trialEndsAt;
+    }
+  },
+  trialDurationDays: {
+    type: Number,
+    default: 90
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -8,6 +8,18 @@ const { sendPasswordResetOtp } = require('../services/emailService');
 const generateToken = (userId) => jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
 const normalizePhone = (value = '') => value.replace(/\D/g, '');
 const hashOtp = (otp) => crypto.createHash('sha256').update(String(otp)).digest('hex');
+const TRIAL_DURATION_DAYS = 90;
+const getTrialInfo = (gym) => {
+  const trialStartsAt = gym?.trialStartsAt || gym?.createdAt || new Date();
+  const trialDurationDays = gym?.trialDurationDays || TRIAL_DURATION_DAYS;
+  const trialEndsAt = gym?.trialEndsAt || new Date(new Date(trialStartsAt).getTime() + (trialDurationDays * 24 * 60 * 60 * 1000));
+
+  return {
+    trialStartsAt,
+    trialEndsAt,
+    trialDurationDays
+  };
+};
 
 const register = async (req, res) => {
   try {
@@ -33,11 +45,18 @@ const register = async (req, res) => {
     }
 
     // Create gym
+    const trialStartsAt = new Date();
+    const trialEndsAt = new Date(trialStartsAt);
+    trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DURATION_DAYS);
+
     const gym = new Gym({
       gymName,
       ownerName,
       email,
-      phone: phone?.trim() || ''
+      phone: phone?.trim() || '',
+      trialStartsAt,
+      trialEndsAt,
+      trialDurationDays: TRIAL_DURATION_DAYS
     });
     await gym.save();
 
@@ -53,6 +72,8 @@ const register = async (req, res) => {
     // Generate token
     const token = generateToken(user._id);
 
+    const trialInfo = getTrialInfo(gym);
+
     res.status(201).json({
       message: 'Registration successful',
       token,
@@ -61,7 +82,8 @@ const register = async (req, res) => {
         name: user.name,
         email: user.email,
         gymId: gym._id,
-        gymName: gym.gymName
+        gymName: gym.gymName,
+        ...trialInfo
       }
     });
   } catch (error) {
@@ -114,6 +136,8 @@ const login = async (req, res) => {
     // Generate token
     const token = generateToken(user._id);
 
+    const trialInfo = getTrialInfo(user.gymId);
+
     res.json({
       message: 'Login successful',
       token,
@@ -122,7 +146,8 @@ const login = async (req, res) => {
         name: user.name,
         email: user.email,
         gymId: user.gymId._id,
-        gymName: user.gymId.gymName
+        gymName: user.gymId.gymName,
+        ...trialInfo
       }
     });
   } catch (error) {
@@ -134,6 +159,8 @@ const login = async (req, res) => {
 const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).populate('gymId');
+    const trialInfo = getTrialInfo(user.gymId);
+
     res.json({
       user: {
         id: user._id,
@@ -143,7 +170,8 @@ const getProfile = async (req, res) => {
         gymName: user.gymId.gymName,
         ownerName: user.gymId.ownerName,
         phone: user.gymId.phone || '',
-        address: user.gymId.address || ''
+        address: user.gymId.address || '',
+        ...trialInfo
       }
     });
   } catch (error) {
@@ -154,7 +182,7 @@ const getProfile = async (req, res) => {
 
 const updateProfile = async (req, res) => {
   try {
-    const { name, email, gymName, ownerName, phone, address, password } = req.body;
+    const { name, email, gymName, ownerName, phone, address, currentPassword, password } = req.body;
     const user = await User.findById(req.user.id).populate('gymId');
 
     if (!user) {
@@ -181,6 +209,15 @@ const updateProfile = async (req, res) => {
     if (name?.trim()) user.name = name.trim();
     if (email?.trim()) user.email = nextEmail;
     if (password) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: 'Current password is required to set a new password' });
+      }
+
+      const isCurrentPasswordValid = await user.comparePassword(currentPassword);
+      if (!isCurrentPasswordValid) {
+        return res.status(400).json({ message: 'Current password is incorrect' });
+      }
+
       if (password.length < 6) {
         return res.status(400).json({ message: 'Password must be at least 6 characters' });
       }
@@ -196,6 +233,8 @@ const updateProfile = async (req, res) => {
     await user.save();
     await user.gymId.save();
 
+    const trialInfo = getTrialInfo(user.gymId);
+
     res.json({
       message: 'Profile updated successfully',
       user: {
@@ -206,7 +245,8 @@ const updateProfile = async (req, res) => {
         gymName: user.gymId.gymName,
         ownerName: user.gymId.ownerName,
         phone: user.gymId.phone || '',
-        address: user.gymId.address || ''
+        address: user.gymId.address || '',
+        ...trialInfo
       }
     });
   } catch (error) {

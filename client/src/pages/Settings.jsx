@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Building2, Lock, Save, UserCircle } from 'lucide-react';
+import { Building2, Eye, EyeOff, Lock, Save, UserCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/authService';
 
@@ -12,11 +12,13 @@ const Settings = () => {
     ownerName: '',
     phone: '',
     address: '',
+    currentPassword: '',
     password: '',
     confirmPassword: ''
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [showPasswords, setShowPasswords] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -43,6 +45,14 @@ const Settings = () => {
       setError('Passwords do not match.');
       return;
     }
+    if (form.password && !form.currentPassword.trim()) {
+      setError('Current password is required to set a new password.');
+      return;
+    }
+    if (form.password && form.password.length < 6) {
+      setError('New password must be at least 6 characters.');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -53,12 +63,20 @@ const Settings = () => {
         ownerName: form.ownerName,
         phone: form.phone,
         address: form.address,
-        ...(form.password ? { password: form.password } : {})
+        ...(form.password ? {
+          currentPassword: form.currentPassword,
+          password: form.password
+        } : {})
       };
       const response = await authService.updateProfile(payload);
       updateUser(response.user);
       await refreshProfile();
-      setForm((prev) => ({ ...prev, password: '', confirmPassword: '' }));
+      setForm((prev) => ({
+        ...prev,
+        currentPassword: '',
+        password: '',
+        confirmPassword: ''
+      }));
 
       if (window.toast) {
         window.toast({
@@ -136,16 +154,51 @@ const Settings = () => {
             <Lock className="w-5 h-5 text-slate-500" />
             <h2 className="text-lg font-semibold text-slate-800">Change Password</h2>
           </div>
+          <div className="mb-4 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowPasswords((prev) => !prev)}
+              className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:text-primary-500"
+            >
+              {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showPasswords ? 'Hide passwords' : 'Show passwords'}
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Current Password</label>
+              <input
+                name="currentPassword"
+                type={showPasswords ? 'text' : 'password'}
+                value={form.currentPassword}
+                onChange={handleChange}
+                className="input"
+              />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">New Password</label>
-              <input name="password" type="password" value={form.password} onChange={handleChange} className="input" />
+              <input
+                name="password"
+                type={showPasswords ? 'text' : 'password'}
+                value={form.password}
+                onChange={handleChange}
+                className="input"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Confirm Password</label>
-              <input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} className="input" />
+              <input
+                name="confirmPassword"
+                type={showPasswords ? 'text' : 'password'}
+                value={form.confirmPassword}
+                onChange={handleChange}
+                className="input"
+              />
             </div>
           </div>
+          <p className="mt-3 text-sm text-slate-500">
+            New password set karne ke liye current password enter karna zaroori hoga.
+          </p>
         </section>
 
         <div className="flex justify-end">

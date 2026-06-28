@@ -1,12 +1,20 @@
 const nodemailer = require('nodemailer');
 
 let cachedTransporter = null;
+const hasSmtpConfig = () => {
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+  return Boolean(SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS);
+};
+
+const canUseConsoleOtpFallback = () => (
+  process.env.ALLOW_CONSOLE_OTP === 'true' || process.env.NODE_ENV !== 'production'
+);
 
 const getTransporter = () => {
   if (cachedTransporter) return cachedTransporter;
 
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE } = process.env;
-  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
+  if (!hasSmtpConfig()) {
     throw new Error('SMTP configuration is missing. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS.');
   }
 
@@ -24,6 +32,20 @@ const getTransporter = () => {
 };
 
 const sendPasswordResetOtp = async ({ toEmail, ownerName, otp }) => {
+  if (!hasSmtpConfig()) {
+    if (!canUseConsoleOtpFallback()) {
+      throw new Error('SMTP configuration is missing. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS.');
+    }
+
+    console.warn(
+      `[DEV OTP] Password reset OTP for ${toEmail} (${ownerName || 'user'}): ${otp}`
+    );
+    return {
+      delivered: false,
+      channel: 'console'
+    };
+  }
+
   const transporter = getTransporter();
   const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER;
 
@@ -45,6 +67,11 @@ const sendPasswordResetOtp = async ({ toEmail, ownerName, otp }) => {
       </div>
     `
   });
+
+  return {
+    delivered: true,
+    channel: 'smtp'
+  };
 };
 
 module.exports = {

@@ -247,7 +247,7 @@ const Register = () => {
 
             <div className="mt-6 grid grid-cols-1 gap-3">
               {[
-                '✓ Free 14-day trial',
+                '✓ Free 90-day trial',
                 '✓ No credit card required',
                 '✓ Cancel anytime',
                 '✓ 24/7 customer support'
