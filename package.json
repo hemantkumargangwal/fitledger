@@ -13,10 +13,18 @@
     "lint": "npm --prefix client run lint",
     "check": "npm run test && npm run lint && npm --prefix client run build"
   },
-  "keywords": ["gym", "management", "saas", "mern"],
+  "keywords": [
+    "gym",
+    "management",
+    "saas",
+    "mern"
+  ],
   "author": "FitLedger Team",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "lucide-react": "^1.26.0"
   }
 }

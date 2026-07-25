@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Building2, Eye, EyeOff, LockKeyhole, Save, ShieldCheck, UserCircle } from 'lucide-react';
+import { Building2 } from "lucide-react";
+ import { Lock } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
+import { UserCircle } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getApiError } from '../services/api';
@@ -125,7 +128,7 @@ const Settings = () => {
 
           <form onSubmit={changePassword} className="space-y-5 p-6 sm:p-8">
             <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2"><LockKeyhole size={19} className="text-lime-700" /><h3 className="font-extrabold text-slate-950">Change password</h3></div>
+              <div className="flex items-center gap-2"><Lock size={19} className="text-lime-700" /><h3 className="font-extrabold text-slate-950">Change password</h3></div>
               <button type="button" onClick={() => setShowPasswords((value) => !value)} className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-lime-700">
                 {showPasswords ? <EyeOff size={15} /> : <Eye size={15} />} {showPasswords ? 'Hide' : 'Show'}
               </button>
@@ -138,7 +141,7 @@ const Settings = () => {
             </div>
             <p className="text-xs text-slate-500">Use at least 8 characters with a letter and number.</p>
             <button type="submit" disabled={savingPassword} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-lime-400 px-5 text-sm font-extrabold text-slate-950 transition hover:bg-lime-300 disabled:opacity-60">
-              <LockKeyhole size={17} /> {savingPassword ? 'Updating…' : 'Update password'}
+              <Lock size={17} /> {savingPassword ? 'Updating…' : 'Update password'}
             </button>
           </form>
         </div>
