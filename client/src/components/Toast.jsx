@@ -2,11 +2,9 @@ import { useEffect, useState } from 'react';
 import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-react';
 
 const Toast = ({ toast, onRemove }) => {
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    setIsVisible(true);
-    
     const timer = setTimeout(() => {
       setIsVisible(false);
       setTimeout(() => onRemove(toast.id), 300);

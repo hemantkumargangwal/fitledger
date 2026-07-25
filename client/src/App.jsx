@@ -1,32 +1,48 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import LandingPage from './pages/LandingPage';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import DashboardLayout from './layouts/DashboardLayout';
-import Dashboard from './pages/Dashboard';
-import Members from './pages/Members';
-import Payments from './pages/Payments';
-import AddPayment from './pages/AddPayment';
-import Reports from './pages/Reports';
-import Settings from './pages/Settings';
-import MemberProfile from './pages/MemberProfile';
 import ProtectedRoute from './components/ProtectedRoute';
+import Spinner from './components/Spinner';
 import ToastContainer from './components/Toast';
 import './services/api'; // Initialize API interceptors
+
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const DashboardLayout = lazy(() => import('./layouts/DashboardLayout'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Members = lazy(() => import('./pages/Members'));
+const Payments = lazy(() => import('./pages/Payments'));
+const AddPayment = lazy(() => import('./pages/AddPayment'));
+const Reports = lazy(() => import('./pages/Reports'));
+const Settings = lazy(() => import('./pages/Settings'));
+const MemberProfile = lazy(() => import('./pages/MemberProfile'));
+
+const AppFallback = () => (
+  <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-600" role="status">
+    <Spinner className="h-7 w-7" />
+    <span className="sr-only">Loading page</span>
+  </div>
+);
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <Routes>
+        <Suspense fallback={<AppFallback />}>
+          <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          {import.meta.env.DEV && (
+            <Route element={<DashboardLayout />}>
+              <Route path="preview/dashboard" element={<Dashboard />} />
+            </Route>
+          )}
           <Route
             element={
               <ProtectedRoute>
@@ -43,7 +59,8 @@ function App() {
             <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="/logout" element={<Navigate to="/login" replace />} />
-        </Routes>
+          </Routes>
+        </Suspense>
         <ToastContainer />
       </Router>
     </AuthProvider>

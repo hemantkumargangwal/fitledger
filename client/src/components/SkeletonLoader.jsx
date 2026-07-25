@@ -58,7 +58,7 @@ const ChartSkeleton = ({ height = 300 }) => (
       </div>
       <div className="h-6 bg-gray-200 rounded w-20 shimmer"></div>
     </div>
-    <div className="h-64 bg-gray-200 rounded-lg shimmer"></div>
+    <div className="bg-gray-200 rounded-lg shimmer" style={{ height }}></div>
   </div>
 );
 

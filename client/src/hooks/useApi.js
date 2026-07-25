@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { ERROR_MESSAGES, LOADING_STATES } from '../utils/constants';
 
-export const useApi = (apiFunction, dependencies = []) => {
+export const useApi = (apiFunction) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -27,12 +27,6 @@ export const useApi = (apiFunction, dependencies = []) => {
       setLoading(false);
     }
   }, [apiFunction]);
-
-  useEffect(() => {
-    if (dependencies.length > 0) {
-      execute();
-    }
-  }, dependencies);
 
   const reset = useCallback(() => {
     setData(null);

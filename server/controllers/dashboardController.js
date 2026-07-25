@@ -54,7 +54,7 @@ const getDashboardStats = async (req, res) => {
 
     const totalRevenue = revenueData[0]?.total || 0;
 
-    res.json({
+    res.status(200).json({
       totalMembers,
       activeMembers,
       newMembersThisMonth,

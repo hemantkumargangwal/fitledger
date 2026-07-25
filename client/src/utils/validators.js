@@ -6,7 +6,7 @@ export const isValidEmail = (email) => {
 
 // Phone number validation
 export const isValidPhone = (phone) => {
-  const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+  const phoneRegex = /^[\d\s+()-]+$/;
   return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 10;
 };
 
@@ -64,7 +64,7 @@ export const isPastDate = (date) => {
 export const isValidAge = (birthDate, minAge = 18, maxAge = 100) => {
   const birth = new Date(birthDate);
   const today = new Date();
-  const age = today.getFullYear() - birth.getFullYear();
+  let age = today.getFullYear() - birth.getFullYear();
   const monthDiff = today.getMonth() - birth.getMonth();
   
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {

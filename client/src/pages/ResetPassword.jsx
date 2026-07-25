@@ -1,144 +1,107 @@
 import { useMemo, useState } from 'react';
+import { ArrowRight, Eye, EyeOff, KeyRound, Mail } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Dumbbell, Eye, EyeOff } from 'lucide-react';
-import Spinner from '../components/Spinner';
+import AuthShell from '../components/auth/AuthShell';
 import Seo from '../components/Seo';
+import Spinner from '../components/Spinner';
+import { getApiError } from '../services/api';
 import { authService } from '../services/authService';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const initialEmail = useMemo(() => searchParams.get('email') || '', [searchParams]);
-  const [form, setForm] = useState({
-    email: initialEmail,
-    otp: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
+  const [form, setForm] = useState({ email: initialEmail, otp: '', newPassword: '', confirmPassword: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setForm((current) => ({
+      ...current,
+      [name]: name === 'otp' ? value.replace(/\D/g, '').slice(0, 6) : value,
+    }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError('');
 
-    if (!form.email.trim() || !form.email.includes('@')) {
-      setError('Please enter a valid email address.');
-      return;
+    if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) return setError('Enter a valid email address.');
+    if (!/^\d{6}$/.test(form.otp)) return setError('Enter the complete 6-digit verification code.');
+    if (form.newPassword.length < 8 || !/[A-Za-z]/.test(form.newPassword) || !/\d/.test(form.newPassword)) {
+      return setError('Password must be at least 8 characters and include a letter and number.');
     }
-    if (!form.otp.trim() || form.otp.trim().length !== 6) {
-      setError('Please enter the 6-digit OTP.');
-      return;
-    }
-    if (form.newPassword.length < 6) {
-      setError('Password must be at least 6 characters.');
-      return;
-    }
-    if (form.newPassword !== form.confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
+    if (form.newPassword !== form.confirmPassword) return setError('Passwords do not match.');
 
     setLoading(true);
     try {
       await authService.resetPassword({
-        email: form.email.trim(),
-        otp: form.otp.trim(),
-        newPassword: form.newPassword
+        email: form.email.trim().toLowerCase(),
+        otp: form.otp,
+        newPassword: form.newPassword,
       });
-      if (window.toast) {
-        window.toast({
-          type: 'success',
-          title: 'Password reset',
-          message: 'Your password has been reset successfully. Please log in.',
-          duration: 3000
-        });
-      }
-      navigate('/login');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Unable to reset password right now.');
+      window.toast?.({ type: 'success', title: 'Password reset', message: 'Sign in with your new password.', duration: 3500 });
+      navigate('/login', { replace: true });
+    } catch (requestError) {
+      setError(getApiError(requestError, 'Unable to reset your password right now.').message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <Seo
-        title="Reset Password"
-        description="Verify OTP and set a new password for your FitLedger account."
-        path="/reset-password"
-        robots="noindex, nofollow"
-      />
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <Dumbbell className="w-12 h-12 text-primary-600" />
-        </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Reset password</h2>
-        <p className="mt-2 text-center text-sm text-gray-600">Enter the OTP sent to your email and choose a new password.</p>
-      </div>
+    <AuthShell
+      eyebrow="Verify your identity"
+      title="Choose a new password"
+      description="Use the 6-digit code from your email. The code expires in 10 minutes and works only once."
+    >
+      <Seo title="Reset Password" description="Verify OTP and set a new password for your FitLedger account." path="/reset-password" robots="noindex, nofollow" />
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{error}</div>}
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">{error}</div>}
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email address</label>
-              <div className="mt-1">
-                <input id="email" name="email" type="email" required value={form.email} onChange={handleChange} className="input" />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="otp" className="block text-sm font-medium text-gray-700">6-digit OTP</label>
-              <div className="mt-1">
-                <input id="otp" name="otp" type="text" required maxLength={6} value={form.otp} onChange={handleChange} className="input tracking-[0.3em]" placeholder="123456" />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">New password</label>
-              <div className="mt-1 relative">
-                <input
-                  id="newPassword"
-                  name="newPassword"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={form.newPassword}
-                  onChange={handleChange}
-                  className="input pr-10"
-                />
-                <button type="button" className="absolute inset-y-0 right-0 pr-3 flex items-center" onClick={() => setShowPassword((s) => !s)}>
-                  {showPassword ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm password</label>
-              <div className="mt-1">
-                <input id="confirmPassword" name="confirmPassword" type={showPassword ? 'text' : 'password'} required value={form.confirmPassword} onChange={handleChange} className="input" />
-              </div>
-            </div>
-
-            <button type="submit" disabled={loading} className="w-full btn-primary py-2 px-4 text-sm font-medium inline-flex items-center justify-center gap-2">
-              {loading && <Spinner className="w-4 h-4" />}
-              {loading ? 'Resetting...' : 'Reset Password'}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center text-sm text-gray-600">
-            <Link to="/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">Resend OTP</Link>
+        <div>
+          <label htmlFor="email" className="mb-2 block text-sm font-bold text-slate-700">Registered email</label>
+          <div className="relative">
+            <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input id="email" name="email" type="email" value={form.email} onChange={handleChange} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white pl-11 pr-4 text-sm outline-none focus:border-lime-500 focus:ring-4 focus:ring-lime-400/15" required />
           </div>
         </div>
-      </div>
-    </div>
+
+        <div>
+          <label htmlFor="otp" className="mb-2 block text-sm font-bold text-slate-700">6-digit verification code</label>
+          <div className="relative">
+            <KeyRound size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input id="otp" name="otp" inputMode="numeric" autoComplete="one-time-code" value={form.otp} onChange={handleChange} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white pl-11 pr-4 text-center font-mono text-lg font-bold tracking-[0.45em] outline-none focus:border-lime-500 focus:ring-4 focus:ring-lime-400/15" placeholder="000000" required />
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="newPassword" className="mb-2 block text-sm font-bold text-slate-700">New password</label>
+          <div className="relative">
+            <input id="newPassword" name="newPassword" type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={form.newPassword} onChange={handleChange} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 pr-12 text-sm outline-none focus:border-lime-500 focus:ring-4 focus:ring-lime-400/15" required />
+            <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-400" aria-label={showPassword ? 'Hide passwords' : 'Show passwords'}>
+              {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">At least 8 characters with a letter and number.</p>
+        </div>
+
+        <div>
+          <label htmlFor="confirmPassword" className="mb-2 block text-sm font-bold text-slate-700">Confirm new password</label>
+          <input id="confirmPassword" name="confirmPassword" type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={form.confirmPassword} onChange={handleChange} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-lime-500 focus:ring-4 focus:ring-lime-400/15" required />
+        </div>
+
+        <button type="submit" disabled={loading} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 text-sm font-extrabold text-white transition hover:bg-slate-800 disabled:opacity-60">
+          {loading ? <Spinner className="h-4 w-4" /> : <ArrowRight size={18} />}
+          {loading ? 'Securing account…' : 'Set new password'}
+        </button>
+      </form>
+      <p className="mt-7 text-sm text-slate-500">
+        Didn&apos;t receive the code? <Link to="/forgot-password" className="font-extrabold text-slate-950 hover:text-lime-700">Request another OTP</Link>
+      </p>
+    </AuthShell>
   );
 };
 

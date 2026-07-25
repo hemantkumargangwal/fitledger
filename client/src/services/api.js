@@ -16,6 +16,18 @@ const api = axios.create({
   },
 });
 
+export const getApiError = (error, fallback = 'Something went wrong. Please try again.') => ({
+  code: error.response?.data?.error?.code || 'REQUEST_FAILED',
+  message: error.response?.data?.error?.message || error.response?.data?.message || error.message || fallback,
+  fields: error.response?.data?.error?.fields || [],
+  requestId: error.response?.data?.requestId || error.response?.headers?.['x-request-id'],
+  status: error.response?.status,
+});
+
+export const createIdempotencyKey = () => (
+  globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`
+);
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
@@ -23,6 +35,7 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    config.headers['x-request-id'] = globalThis.crypto?.randomUUID?.() || Date.now().toString();
     return config;
   },
   (error) => {
@@ -34,7 +47,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isDesignPreview = import.meta.env.DEV && window.location.pathname.startsWith('/preview/');
+    if (error.response?.status === 401 && !window.location.pathname.startsWith('/login') && !isDesignPreview) {
       // Handle unauthorized access
       localStorage.removeItem('token');
       window.location.href = '/login';

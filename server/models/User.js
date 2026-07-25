@@ -21,7 +21,8 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-    minlength: 6
+    minlength: 8,
+    select: false,
   },
   resetPasswordOtpHash: {
     type: String,
@@ -40,6 +41,19 @@ const userSchema = new mongoose.Schema({
     enum: ['owner', 'staff'],
     default: 'owner'
   },
+  status: {
+    type: String,
+    enum: ['active', 'disabled'],
+    default: 'active'
+  },
+  passwordChangedAt: {
+    type: Date,
+    default: null
+  },
+  lastLoginAt: {
+    type: Date,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -56,6 +70,11 @@ userSchema.pre('save', async function(next) {
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
+};
+
+userSchema.methods.changedPasswordAfter = function(jwtIssuedAt) {
+  if (!this.passwordChangedAt) return false;
+  return Math.floor(this.passwordChangedAt.getTime() / 1000) > jwtIssuedAt;
 };
 
 module.exports = mongoose.model('User', userSchema);

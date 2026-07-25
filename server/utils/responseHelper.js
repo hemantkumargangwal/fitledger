@@ -5,16 +5,21 @@ class ApiResponse {
       success: true,
       message,
       data,
-      timestamp: new Date().toISOString(),
+      requestId: res.req?.requestId,
     });
   }
 
   static error(res, message = 'Internal Server Error', statusCode = 500, errors = null) {
     return res.status(statusCode).json({
       success: false,
+      error: {
+        code: statusCode === 404 ? 'RESOURCE_NOT_FOUND' : 'REQUEST_FAILED',
+        message,
+        ...(errors ? { fields: errors } : {}),
+      },
       message,
       errors,
-      timestamp: new Date().toISOString(),
+      requestId: res.req?.requestId,
     });
   }
 
@@ -48,15 +53,15 @@ class ApiResponse {
       success: true,
       message,
       data,
-      pagination: {
+      meta: {
         page: pagination.page,
         limit: pagination.limit,
         total: pagination.total,
-        pages: Math.ceil(pagination.total / pagination.limit),
+        totalPages: Math.ceil(pagination.total / pagination.limit),
         hasNext: pagination.page < Math.ceil(pagination.total / pagination.limit),
         hasPrev: pagination.page > 1,
       },
-      timestamp: new Date().toISOString(),
+      requestId: res.req?.requestId,
     });
   }
 }

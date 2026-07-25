@@ -160,7 +160,7 @@ const validateUser = (data) => {
 };
 
 // Pagination validation
-const validatePagination = (query) => {
+const validatePagination = (query, allowedSortFields = ['createdAt']) => {
   const page = parseInt(query.page) || 1;
   const limit = parseInt(query.limit) || 10;
   const sortBy = query.sortBy || 'createdAt';
@@ -179,6 +179,10 @@ const validatePagination = (query) => {
   // Validate sort order
   if (!['asc', 'desc'].includes(sortOrder)) {
     throw new Error('Sort order must be either asc or desc');
+  }
+
+  if (!allowedSortFields.includes(sortBy)) {
+    throw new Error(`Sort field must be one of: ${allowedSortFields.join(', ')}`);
   }
 
   return { page, limit, sortBy, sortOrder };

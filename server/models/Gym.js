@@ -21,6 +21,11 @@ const gymSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  phoneNormalized: {
+    type: String,
+    trim: true,
+    index: true
+  },
   address: {
     type: String,
     trim: true
@@ -45,6 +50,13 @@ const gymSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
+});
+
+gymSchema.pre('save', function(next) {
+  if (this.isModified('phone')) {
+    this.phoneNormalized = (this.phone || '').replace(/\D/g, '');
+  }
+  next();
 });
 
 module.exports = mongoose.model('Gym', gymSchema);

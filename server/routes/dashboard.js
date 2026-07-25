@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { ownerOnly } = require('../middleware/authorize');
 const {
   getDashboardStats,
   getMemberGrowthChart,
@@ -14,7 +15,7 @@ const {
   getGymActivity
 } = require('../controllers/dashboardController');
 
-router.use(auth); // All dashboard routes require authentication
+router.use(auth, ownerOnly);
 
 router.get('/stats', getDashboardStats);
 router.get('/member-growth', getMemberGrowthChart);

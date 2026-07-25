@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { ArrowLeft, ArrowRight, Mail } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Dumbbell } from 'lucide-react';
-import Spinner from '../components/Spinner';
+import AuthShell from '../components/auth/AuthShell';
 import Seo from '../components/Seo';
+import Spinner from '../components/Spinner';
 import { authService } from '../services/authService';
+import { getApiError } from '../services/api';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -11,80 +13,66 @@ const ForgotPassword = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError('');
-
-    if (!email.trim() || !email.includes('@')) {
-      setError('Please enter a valid email address.');
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      setError('Enter a valid email address.');
       return;
     }
 
     setLoading(true);
     try {
-      await authService.forgotPassword(email.trim());
-      navigate(`/reset-password?email=${encodeURIComponent(email.trim())}`);
-      if (window.toast) {
-        window.toast({
-          type: 'success',
-          title: 'OTP sent',
-          message: 'If your account exists, an OTP has been sent to your email.',
-          duration: 3000
-        });
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Unable to send OTP right now.');
+      await authService.forgotPassword(normalizedEmail);
+      navigate(`/reset-password?email=${encodeURIComponent(normalizedEmail)}`);
+      window.toast?.({
+        type: 'success',
+        title: 'Check your inbox',
+        message: 'If the account exists, a 6-digit OTP has been sent.',
+        duration: 4000,
+      });
+    } catch (requestError) {
+      setError(getApiError(requestError, 'Unable to send the OTP right now.').message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <Seo
-        title="Forgot Password"
-        description="Request an OTP to reset your FitLedger account password."
-        path="/forgot-password"
-        robots="noindex, nofollow"
-      />
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <Dumbbell className="w-12 h-12 text-primary-600" />
+    <AuthShell
+      eyebrow="Account recovery"
+      title="Reset your password"
+      description="Enter the email registered with your owner account. We’ll send a verification code if the account exists."
+    >
+      <Seo title="Forgot Password" description="Request an OTP to reset your FitLedger account password." path="/forgot-password" robots="noindex, nofollow" />
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{error}</div>}
+        <div>
+          <label htmlFor="email" className="mb-2 block text-sm font-bold text-slate-700">Registered email</label>
+          <div className="relative">
+            <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="min-h-12 w-full rounded-xl border border-slate-300 bg-white pl-11 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-lime-500 focus:ring-4 focus:ring-lime-400/15"
+              placeholder="owner@yourgym.com"
+              required
+            />
+          </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Forgot password</h2>
-        <p className="mt-2 text-center text-sm text-gray-600">We&apos;ll send a 6-digit OTP to your registered email.</p>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">{error}</div>}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email address</label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="input"
-                  placeholder="Enter your registered email"
-                />
-              </div>
-            </div>
-            <button type="submit" disabled={loading} className="w-full btn-primary py-2 px-4 text-sm font-medium inline-flex items-center justify-center gap-2">
-              {loading && <Spinner className="w-4 h-4" />}
-              {loading ? 'Sending OTP...' : 'Send OTP'}
-            </button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-gray-600">
-            <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">Back to login</Link>
-          </p>
-        </div>
-      </div>
-    </div>
+        <button type="submit" disabled={loading} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 text-sm font-extrabold text-white transition hover:bg-slate-800 disabled:opacity-60">
+          {loading ? <Spinner className="h-4 w-4" /> : <ArrowRight size={18} />}
+          {loading ? 'Sending secure code…' : 'Send verification code'}
+        </button>
+      </form>
+      <Link to="/login" className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-lime-700">
+        <ArrowLeft size={16} /> Back to sign in
+      </Link>
+    </AuthShell>
   );
 };
 

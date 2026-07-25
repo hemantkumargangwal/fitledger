@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { ownerOnly } = require('../middleware/authorize');
 const {
   addMember,
   getMembers,
@@ -16,7 +17,7 @@ const {
 } = require('../controllers/memberController');
 const { getMemberActivity } = require('../controllers/activityController');
 
-router.use(auth); // All member routes require authentication
+router.use(auth, ownerOnly);
 
 router.post('/', addMember);
 router.get('/', getMembers);

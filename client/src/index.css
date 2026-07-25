@@ -4,6 +4,27 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+  --surface-canvas: 248 250 252;
+  --surface-card: 255 255 255;
+  --text-primary: 15 23 42;
+  --text-muted: 100 116 139;
+  --brand-accent: 245 158 11;
+  --radius-card: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @layer base {
   * {
     @apply border-gray-200;
@@ -12,6 +33,11 @@
   body {
     @apply bg-slate-50 text-slate-900 font-sans antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--brand-accent));
+    outline-offset: 2px;
   }
   
   html {

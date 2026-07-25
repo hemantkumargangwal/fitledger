@@ -1,352 +1,234 @@
-const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 const Gym = require('../models/Gym');
+const PasswordResetChallenge = require('../models/PasswordResetChallenge');
 const User = require('../models/User');
-const validator = require('validator');
 const { sendPasswordResetOtp } = require('../services/emailService');
+const { AppError } = require('../utils/errorHandler');
 
-const generateToken = (userId) => jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+const TRIAL_DURATION_DAYS = 90;
+const RESET_TTL_MS = 10 * 60 * 1000;
+const RESET_MAX_ATTEMPTS = 5;
+
+const generateToken = (userId) => jwt.sign(
+  { userId },
+  process.env.JWT_SECRET,
+  { expiresIn: process.env.JWT_EXPIRES_IN || '12h' }
+);
+
 const normalizePhone = (value = '') => value.replace(/\D/g, '');
 const hashOtp = (otp) => crypto.createHash('sha256').update(String(otp)).digest('hex');
-const TRIAL_DURATION_DAYS = 90;
+const isOtpMatch = (candidate, expectedHash) => {
+  const candidateHash = Buffer.from(hashOtp(candidate), 'hex');
+  const expected = Buffer.from(expectedHash, 'hex');
+  return candidateHash.length === expected.length && crypto.timingSafeEqual(candidateHash, expected);
+};
+
 const getTrialInfo = (gym) => {
   const trialStartsAt = gym?.trialStartsAt || gym?.createdAt || new Date();
   const trialDurationDays = gym?.trialDurationDays || TRIAL_DURATION_DAYS;
-  const trialEndsAt = gym?.trialEndsAt || new Date(new Date(trialStartsAt).getTime() + (trialDurationDays * 24 * 60 * 60 * 1000));
-
-  return {
-    trialStartsAt,
-    trialEndsAt,
-    trialDurationDays
-  };
+  const trialEndsAt = gym?.trialEndsAt || new Date(
+    new Date(trialStartsAt).getTime() + (trialDurationDays * 24 * 60 * 60 * 1000)
+  );
+  return { trialStartsAt, trialEndsAt, trialDurationDays };
 };
 
+const publicUser = (user, gym = user.gymId) => ({
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  gymId: gym._id,
+  gymName: gym.gymName,
+  ownerName: gym.ownerName,
+  phone: gym.phone || '',
+  address: gym.address || '',
+  ...getTrialInfo(gym),
+});
+
 const register = async (req, res) => {
+  const { gymName, ownerName, email, password, phone } = req.body;
+  const existingUser = await User.exists({ email });
+  const existingGym = await Gym.exists({ email });
+  if (existingUser || existingGym) {
+    throw new AppError('An account with this email already exists', 409, 'ACCOUNT_EXISTS');
+  }
+
+  const trialStartsAt = new Date();
+  const trialEndsAt = new Date(trialStartsAt);
+  trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DURATION_DAYS);
+
+  const gym = await Gym.create({
+    gymName,
+    ownerName,
+    email,
+    phone,
+    phoneNormalized: normalizePhone(phone),
+    trialStartsAt,
+    trialEndsAt,
+    trialDurationDays: TRIAL_DURATION_DAYS,
+  });
+
   try {
-    const { gymName, ownerName, email, password, phone } = req.body;
-
-    // Validation
-    if (!gymName || !ownerName || !email || !password) {
-      return res.status(400).json({ message: 'All fields are required' });
-    }
-
-    if (!validator.isEmail(email)) {
-      return res.status(400).json({ message: 'Invalid email format' });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters' });
-    }
-
-    // Check if gym already exists
-    const existingGym = await Gym.findOne({ email });
-    if (existingGym) {
-      return res.status(400).json({ message: 'Gym with this email already exists' });
-    }
-
-    // Create gym
-    const trialStartsAt = new Date();
-    const trialEndsAt = new Date(trialStartsAt);
-    trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DURATION_DAYS);
-
-    const gym = new Gym({
-      gymName,
-      ownerName,
-      email,
-      phone: phone?.trim() || '',
-      trialStartsAt,
-      trialEndsAt,
-      trialDurationDays: TRIAL_DURATION_DAYS
-    });
-    await gym.save();
-
-    // Create user
-    const user = new User({
-      gymId: gym._id,
-      name: ownerName,
-      email,
-      password
-    });
-    await user.save();
-
-    // Generate token
-    const token = generateToken(user._id);
-
-    const trialInfo = getTrialInfo(gym);
-
-    res.status(201).json({
+    const user = await User.create({ gymId: gym._id, name: ownerName, email, password, role: 'owner' });
+    return res.status(201).json({
       message: 'Registration successful',
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        gymId: gym._id,
-        gymName: gym.gymName,
-        ...trialInfo
-      }
+      token: generateToken(user._id),
+      user: publicUser(user, gym),
     });
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ message: 'Server error' });
+    await Gym.deleteOne({ _id: gym._id });
+    throw error;
   }
 };
 
 const login = async (req, res) => {
-  try {
-    const { identifier, email, password } = req.body;
-    const loginId = (identifier || email || '').trim();
+  const { identifier, password } = req.body;
+  let user;
 
-    // Validation
-    if (!loginId || !password) {
-      return res.status(400).json({ message: 'Email/phone and password are required' });
-    }
-
-    let user = null;
-
-    if (validator.isEmail(loginId)) {
-      user = await User.findOne({ email: loginId.toLowerCase() }).populate('gymId');
-    } else {
-      const exactPhoneGym = await Gym.findOne({ phone: loginId });
-
-      if (exactPhoneGym) {
-        user = await User.findOne({ gymId: exactPhoneGym._id }).populate('gymId');
-      }
-
-      if (!user) {
-        const normalizedInput = normalizePhone(loginId);
-        const gyms = await Gym.find({ phone: { $exists: true, $ne: '' } });
-        const matchedGym = gyms.find((gym) => normalizePhone(gym.phone) === normalizedInput);
-        if (matchedGym) {
-          user = await User.findOne({ gymId: matchedGym._id }).populate('gymId');
-        }
-      }
-    }
-
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
-
-    // Check password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
-
-    // Generate token
-    const token = generateToken(user._id);
-
-    const trialInfo = getTrialInfo(user.gymId);
-
-    res.json({
-      message: 'Login successful',
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        gymId: user.gymId._id,
-        gymName: user.gymId.gymName,
-        ...trialInfo
-      }
+  if (identifier.includes('@')) {
+    user = await User.findOne({ email: identifier.toLowerCase() })
+      .select('+password')
+      .populate('gymId');
+  } else {
+    const normalizedPhone = normalizePhone(identifier);
+    const gym = await Gym.findOne({
+      $or: [{ phone: identifier }, { phoneNormalized: normalizedPhone }],
     });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error' });
+    if (gym) {
+      user = await User.findOne({ gymId: gym._id, role: 'owner' })
+        .select('+password')
+        .populate('gymId');
+    }
   }
+
+  if (!user || !user.gymId || !(await user.comparePassword(password))) {
+    throw new AppError('Email/phone or password is incorrect', 401, 'INVALID_CREDENTIALS');
+  }
+  if (user.status !== 'active') {
+    throw new AppError('This account is disabled. Contact support.', 403, 'ACCOUNT_DISABLED');
+  }
+
+  await User.updateOne({ _id: user._id }, { lastLoginAt: new Date() });
+  return res.json({
+    message: 'Login successful',
+    token: generateToken(user._id),
+    user: publicUser(user),
+  });
 };
 
-const getProfile = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).populate('gymId');
-    const trialInfo = getTrialInfo(user.gymId);
-
-    res.json({
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        gymId: user.gymId._id,
-        gymName: user.gymId.gymName,
-        ownerName: user.gymId.ownerName,
-        phone: user.gymId.phone || '',
-        address: user.gymId.address || '',
-        ...trialInfo
-      }
-    });
-  } catch (error) {
-    console.error('Profile error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+const getProfile = async (req, res) => res.json({ user: publicUser(req.user) });
 
 const updateProfile = async (req, res) => {
-  try {
-    const { name, email, gymName, ownerName, phone, address, currentPassword, password } = req.body;
-    const user = await User.findById(req.user.id).populate('gymId');
+  const { name, email, gymName, ownerName, phone, address } = req.body;
+  const user = await User.findById(req.user.id).populate('gymId');
+  if (!user || !user.gymId) throw new AppError('User not found', 404, 'USER_NOT_FOUND');
 
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+  const nextEmail = email?.trim().toLowerCase() || user.email;
+  if (nextEmail !== user.email) {
+    const [existingUser, existingGym] = await Promise.all([
+      User.exists({ email: nextEmail, _id: { $ne: user._id } }),
+      Gym.exists({ email: nextEmail, _id: { $ne: user.gymId._id } }),
+    ]);
+    if (existingUser || existingGym) {
+      throw new AppError('Email is already in use', 409, 'EMAIL_IN_USE');
     }
-
-    if (email && !validator.isEmail(email)) {
-      return res.status(400).json({ message: 'Invalid email format' });
-    }
-
-    const nextEmail = email?.trim().toLowerCase() || user.email;
-    if (nextEmail !== user.email) {
-      const existingUser = await User.findOne({ email: nextEmail, _id: { $ne: user._id } });
-      if (existingUser) {
-        return res.status(400).json({ message: 'Email already in use' });
-      }
-
-      const existingGym = await Gym.findOne({ email: nextEmail, _id: { $ne: user.gymId._id } });
-      if (existingGym) {
-        return res.status(400).json({ message: 'Gym email already in use' });
-      }
-    }
-
-    if (name?.trim()) user.name = name.trim();
-    if (email?.trim()) user.email = nextEmail;
-    if (password) {
-      if (!currentPassword) {
-        return res.status(400).json({ message: 'Current password is required to set a new password' });
-      }
-
-      const isCurrentPasswordValid = await user.comparePassword(currentPassword);
-      if (!isCurrentPasswordValid) {
-        return res.status(400).json({ message: 'Current password is incorrect' });
-      }
-
-      if (password.length < 6) {
-        return res.status(400).json({ message: 'Password must be at least 6 characters' });
-      }
-      user.password = password;
-    }
-
-    if (gymName?.trim()) user.gymId.gymName = gymName.trim();
-    if (ownerName?.trim()) user.gymId.ownerName = ownerName.trim();
-    user.gymId.email = nextEmail;
-    user.gymId.phone = phone?.trim() || '';
-    user.gymId.address = address?.trim() || '';
-
-    await user.save();
-    await user.gymId.save();
-
-    const trialInfo = getTrialInfo(user.gymId);
-
-    res.json({
-      message: 'Profile updated successfully',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        gymId: user.gymId._id,
-        gymName: user.gymId.gymName,
-        ownerName: user.gymId.ownerName,
-        phone: user.gymId.phone || '',
-        address: user.gymId.address || '',
-        ...trialInfo
-      }
-    });
-  } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({ message: 'Server error' });
   }
+
+  if (name?.trim()) user.name = name.trim();
+  user.email = nextEmail;
+  if (gymName?.trim()) user.gymId.gymName = gymName.trim();
+  if (ownerName?.trim()) user.gymId.ownerName = ownerName.trim();
+  user.gymId.email = nextEmail;
+  user.gymId.phone = phone?.trim() || '';
+  user.gymId.phoneNormalized = normalizePhone(phone);
+  user.gymId.address = address?.trim() || '';
+
+  await Promise.all([user.save(), user.gymId.save()]);
+  return res.json({ message: 'Profile updated successfully', user: publicUser(user) });
+};
+
+const changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const user = await User.findById(req.user.id).select('+password');
+  if (!user) throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+  if (!(await user.comparePassword(currentPassword))) {
+    throw new AppError('Current password is incorrect', 422, 'CURRENT_PASSWORD_INCORRECT', [
+      { field: 'currentPassword', message: 'Current password is incorrect' },
+    ]);
+  }
+
+  user.password = newPassword;
+  user.passwordChangedAt = new Date();
+  await user.save();
+  return res.json({ message: 'Password changed successfully. Please sign in again.' });
 };
 
 const forgotPassword = async (req, res) => {
-  try {
-    const email = req.body.email?.trim().toLowerCase();
-    if (!email || !validator.isEmail(email)) {
-      return res.status(400).json({ message: 'Please enter a valid email address.' });
-    }
+  const { email } = req.body;
+  const genericMessage = 'If an account exists for this email, an OTP has been sent.';
+  const user = await User.findOne({ email });
+  if (!user || user.status !== 'active') return res.json({ message: genericMessage });
 
-    const user = await User.findOne({ email }).populate('gymId');
-    if (!user) {
-      return res.json({ message: 'If an account exists for this email, an OTP has been sent.' });
-    }
+  await PasswordResetChallenge.updateMany(
+    { userId: user._id, consumedAt: null },
+    { consumedAt: new Date() }
+  );
 
-    const otp = String(crypto.randomInt(100000, 999999));
-    user.resetPasswordOtpHash = hashOtp(otp);
-    user.resetPasswordOtpExpires = new Date(Date.now() + (10 * 60 * 1000));
-    user.resetPasswordOtpAttempts = 0;
-    await user.save();
+  const otp = String(crypto.randomInt(100000, 1000000));
+  await PasswordResetChallenge.create({
+    userId: user._id,
+    otpHash: hashOtp(otp),
+    expiresAt: new Date(Date.now() + RESET_TTL_MS),
+  });
 
-    await sendPasswordResetOtp({
-      toEmail: user.email,
-      ownerName: user.name || user.gymId?.ownerName,
-      otp
-    });
-
-    res.json({ message: 'If an account exists for this email, an OTP has been sent.' });
-  } catch (error) {
-    console.error('Forgot password error:', error);
-    res.status(500).json({ message: 'Unable to send OTP right now. Please try again later.' });
-  }
+  await sendPasswordResetOtp({ toEmail: user.email, ownerName: user.name, otp });
+  return res.json({ message: genericMessage });
 };
 
 const resetPasswordWithOtp = async (req, res) => {
-  try {
-    const email = req.body.email?.trim().toLowerCase();
-    const otp = req.body.otp?.trim();
-    const newPassword = req.body.newPassword;
+  const { email, otp, newPassword } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) throw new AppError('OTP is invalid or has expired', 422, 'INVALID_RESET_CHALLENGE');
 
-    if (!email || !validator.isEmail(email)) {
-      return res.status(400).json({ message: 'Please enter a valid email address.' });
-    }
-    if (!otp || otp.length !== 6) {
-      return res.status(400).json({ message: 'Please enter a valid 6-digit OTP.' });
-    }
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters.' });
-    }
+  const challenge = await PasswordResetChallenge.findOne({
+    userId: user._id,
+    consumedAt: null,
+    expiresAt: { $gt: new Date() },
+  }).sort({ createdAt: -1 }).select('+otpHash');
 
-    const user = await User.findOne({ email });
-    if (!user || !user.resetPasswordOtpHash || !user.resetPasswordOtpExpires) {
-      return res.status(400).json({ message: 'OTP is invalid or has expired.' });
-    }
-
-    if (user.resetPasswordOtpExpires < new Date()) {
-      user.resetPasswordOtpHash = null;
-      user.resetPasswordOtpExpires = null;
-      user.resetPasswordOtpAttempts = 0;
-      await user.save();
-      return res.status(400).json({ message: 'OTP is invalid or has expired.' });
-    }
-
-    user.resetPasswordOtpAttempts = (user.resetPasswordOtpAttempts || 0) + 1;
-    if (user.resetPasswordOtpAttempts > 5) {
-      user.resetPasswordOtpHash = null;
-      user.resetPasswordOtpExpires = null;
-      user.resetPasswordOtpAttempts = 0;
-      await user.save();
-      return res.status(400).json({ message: 'Too many invalid attempts. Please request a new OTP.' });
-    }
-
-    if (user.resetPasswordOtpHash !== hashOtp(otp)) {
-      await user.save();
-      return res.status(400).json({ message: 'OTP is invalid or has expired.' });
-    }
-
-    user.password = newPassword;
-    user.resetPasswordOtpHash = null;
-    user.resetPasswordOtpExpires = null;
-    user.resetPasswordOtpAttempts = 0;
-    await user.save();
-
-    res.json({ message: 'Password reset successfully. Please log in with your new password.' });
-  } catch (error) {
-    console.error('Reset password error:', error);
-    res.status(500).json({ message: 'Unable to reset password right now. Please try again later.' });
+  if (!challenge) {
+    throw new AppError('OTP is invalid or has expired', 422, 'INVALID_RESET_CHALLENGE');
   }
+
+  if (!isOtpMatch(otp, challenge.otpHash)) {
+    challenge.attempts += 1;
+    if (challenge.attempts >= RESET_MAX_ATTEMPTS) challenge.consumedAt = new Date();
+    await challenge.save();
+    throw new AppError(
+      challenge.consumedAt ? 'Too many invalid attempts. Request a new OTP.' : 'OTP is invalid or has expired',
+      422,
+      challenge.consumedAt ? 'RESET_ATTEMPTS_EXCEEDED' : 'INVALID_RESET_CHALLENGE'
+    );
+  }
+
+  challenge.consumedAt = new Date();
+  user.password = newPassword;
+  user.passwordChangedAt = new Date();
+  await Promise.all([challenge.save(), user.save()]);
+  return res.json({ message: 'Password reset successfully. Please sign in with your new password.' });
 };
 
 module.exports = {
-  register,
-  login,
-  getProfile,
-  updateProfile,
+  changePassword,
   forgotPassword,
-  resetPasswordWithOtp
+  generateToken,
+  getProfile,
+  getTrialInfo,
+  hashOtp,
+  isOtpMatch,
+  login,
+  register,
+  resetPasswordWithOtp,
+  updateProfile,
 };

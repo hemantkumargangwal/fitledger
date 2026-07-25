@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { ownerOnly } = require('../middleware/authorize');
 const {
   addPayment,
   getPayments,
@@ -16,7 +17,7 @@ const {
   exportPayments
 } = require('../controllers/paymentController');
 
-router.use(auth); // All payment routes require authentication
+router.use(auth, ownerOnly);
 
 router.post('/', addPayment);
 router.get('/', getPayments);

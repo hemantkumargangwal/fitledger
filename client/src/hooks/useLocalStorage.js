@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export const useLocalStorage = (key, initialValue) => {
   // Get from local storage then parse stored json or return initialValue
@@ -44,10 +44,6 @@ export const useLocalStorage = (key, initialValue) => {
       console.warn(`Error removing localStorage key "${key}":`, error);
     }
   };
-
-  useEffect(() => {
-    setStoredValue(readValue());
-  }, []);
 
   return [storedValue, setValue, removeValue];
 };

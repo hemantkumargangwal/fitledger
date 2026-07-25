@@ -1,44 +1,70 @@
-import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { CalendarDays, Menu, Plus } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-const pageTitles = {
-  '/dashboard': 'Dashboard',
-  '/members': 'Members',
-  '/payments': 'Payments',
-  '/payments/add': 'Add Payment',
-  '/reports': 'Reports',
-  '/settings': 'Settings',
+const pageMeta = {
+  '/dashboard': ['Overview', 'A live view of your gym business'],
+  '/preview/dashboard': ['Overview', 'A live view of your gym business'],
+  '/members': ['Members', 'Manage members and memberships'],
+  '/payments': ['Payments', 'Track collections and outstanding dues'],
+  '/payments/add': ['Record payment', 'Create a payment and receipt'],
+  '/reports': ['Reports', 'Understand performance and cash flow'],
+  '/settings': ['Settings', 'Manage your gym profile and account'],
 };
 
-const getPageTitle = (pathname) => {
-  if (pageTitles[pathname]) return pageTitles[pathname];
-  if (pathname.startsWith('/members/')) return 'Member Profile';
-  return 'FitLedger';
+const getPageMeta = (pathname) => {
+  if (pageMeta[pathname]) return pageMeta[pathname];
+  if (pathname.startsWith('/members/')) return ['Member profile', 'Membership, payment and activity details'];
+  return ['FitLedger', 'Gym management workspace'];
 };
 
-const Navbar = () => {
+const Navbar = ({ onOpenMobile = () => {} }) => {
   const location = useLocation();
   const { user } = useAuth();
-  const title = getPageTitle(location.pathname);
+  const [title, subtitle] = getPageMeta(location.pathname);
+  const today = new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date());
 
   return (
-    <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-6 bg-white/80 backdrop-blur-md border-b border-slate-200/80 shadow-sm">
-      <div>
-        <h1 className="text-xl font-bold text-slate-800 tracking-tight">{title}</h1>
-        {location.pathname === '/dashboard' && (
-          <p className="text-sm text-slate-500 mt-0.5">Here&apos;s what&apos;s happening today</p>
-        )}
+    <header className="sticky top-0 z-30 flex min-h-[76px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+      <div className="flex min-w-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={onOpenMobile}
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700 md:hidden"
+          aria-label="Open navigation"
+        >
+          <Menu size={20} />
+        </button>
+        <div className="min-w-0">
+          <h1 className="truncate text-lg font-extrabold tracking-tight text-slate-950 sm:text-xl">{title}</h1>
+          <p className="hidden truncate text-xs text-slate-500 sm:block">{subtitle}</p>
+        </div>
       </div>
-      <div className="flex items-center gap-4">
+
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 lg:flex">
+          <CalendarDays size={15} className="text-lime-600" />
+          {today}
+        </div>
+        <Link
+          to="/payments/add"
+          className="hidden min-h-10 items-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 sm:inline-flex"
+        >
+          <Plus size={17} />
+          Record payment
+        </Link>
         {user && (
-          <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-900 font-semibold text-sm">
-              {user.name?.charAt(0).toUpperCase() ?? 'U'}
+          <div className="flex items-center gap-2 border-l border-slate-200 pl-2 sm:pl-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-lime-400 text-sm font-extrabold text-slate-950">
+              {user.name?.charAt(0).toUpperCase() ?? 'O'}
             </div>
-            <div className="text-left hidden sm:block">
-              <p className="text-sm font-medium text-slate-800">{user.name}</p>
-              <p className="text-xs text-slate-500">{user.gymName ?? 'Gym'}</p>
+            <div className="hidden max-w-36 text-left lg:block">
+              <p className="truncate text-sm font-bold text-slate-900">{user.name}</p>
+              <p className="truncate text-[11px] text-slate-500">{user.gymName ?? 'Gym owner'}</p>
             </div>
           </div>
         )}

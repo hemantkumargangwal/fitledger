@@ -93,6 +93,8 @@ const Payments = () => {
 
   useEffect(() => {
     fetchPayments();
+    // These filter values are the intentional refresh contract for this legacy page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, filters.paymentType, filters.startDate, filters.endDate, filters.search]);
 
   useEffect(() => {

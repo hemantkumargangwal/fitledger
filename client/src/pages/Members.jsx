@@ -26,8 +26,6 @@ const Members = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showDropdown, setShowDropdown] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [formData, setFormData] = useState({
@@ -67,7 +65,6 @@ const Members = () => {
   const fetchMembers = async () => {
     try {
       setLoading(true);
-      setError(null);
       const params = {
         page: currentPage,
         limit: 10,
@@ -83,7 +80,6 @@ const Members = () => {
 
     } catch (e) {
       console.error('Error fetching members:', e);
-      setError(ERROR_MESSAGES && ERROR_MESSAGES.NETWORK_ERROR ? ERROR_MESSAGES.NETWORK_ERROR : "Error fetching members");
       if (window.toast) {
         window.toast({
           type: 'error',
@@ -95,13 +91,7 @@ const Members = () => {
       setMockMembers();
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
-  };
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchMembers();
   };
 
   useEffect(() => {
