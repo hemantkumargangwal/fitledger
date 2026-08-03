@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Dumbbell, FileText, Home, IndianRupee, LogOut, Settings, ShieldCheck, Users, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ClipboardList, Dumbbell, FileText, Home, IndianRupee, LogOut, Salad, Settings, ShieldCheck, Tags, Users, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const navGroups = [
@@ -7,7 +7,11 @@ const navGroups = [
     items: [
       { to: '/dashboard', icon: Home, label: 'Overview' },
       { to: '/members', icon: Users, label: 'Members' },
+      { to: '/memberships', icon: Tags, label: 'Membership' },
+      { to: '/workout-plans', icon: Dumbbell, label: 'Workout Plan' },
+      { to: '/diet-plans', icon: Salad, label: 'Diet Plan' },
       { to: '/payments', icon: IndianRupee, label: 'Payments' },
+      { to: '/enquiries', icon: ClipboardList, label: 'Enquiries' },
     ],
   },
   {

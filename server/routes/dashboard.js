@@ -12,11 +12,13 @@ const {
   getRevenueSummary,
   getDailyRevenue,
   getExpiringAlerts,
-  getGymActivity
+  getGymActivity,
+  getOwnerOverview
 } = require('../controllers/dashboardController');
 
 router.use(auth, ownerOnly);
 
+router.get('/owner-overview', getOwnerOverview);
 router.get('/stats', getDashboardStats);
 router.get('/member-growth', getMemberGrowthChart);
 router.get('/revenue', getRevenueChart);

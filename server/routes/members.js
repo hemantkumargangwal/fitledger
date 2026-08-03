@@ -10,6 +10,7 @@ const {
   getExpiringMembers,
   getMember,
   updateMember,
+  assignMembership,
   deleteMember,
   bulkUpdateMembers,
   bulkDeleteMembers,
@@ -30,6 +31,7 @@ router.post('/sync-status', syncMemberStatus);
 router.get('/:id/activity', getMemberActivity);
 router.get('/:id', getMember);
 router.put('/:id', updateMember);
+router.post('/:id/assign-membership', assignMembership);
 router.delete('/:id', deleteMember);
 
 module.exports = router;

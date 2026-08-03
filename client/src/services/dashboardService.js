@@ -1,6 +1,12 @@
 import api from './api';
 
 export const dashboardService = {
+  // Consolidated owner dashboard analytics
+  getOwnerOverview: async () => {
+    const response = await api.get('/dashboard/owner-overview');
+    return response.data;
+  },
+
   // Get dashboard statistics
   getStats: async () => {
     const response = await api.get('/dashboard/stats');

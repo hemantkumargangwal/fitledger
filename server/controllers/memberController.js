@@ -1,38 +1,89 @@
 const Member = require('../models/Member');
 const Payment = require('../models/Payment');
+const Gym = require('../models/Gym');
 const { createLog } = require('../services/activityService');
+const { sendMemberWelcomeEmail } = require('../services/emailService');
+
+const parseDate = (value) => (value ? new Date(value) : undefined);
+const cleanString = (value) => String(value || '').trim();
+const cleanNumber = (value) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+};
+
+const getMemberPayload = (body) => ({
+  name: cleanString(body.name || body.fullName),
+  phone: cleanString(body.phone || body.mobile),
+  gender: cleanString(body.gender),
+  email: cleanString(body.email).toLowerCase(),
+  dateOfBirth: parseDate(body.dateOfBirth),
+  anniversaryDate: parseDate(body.anniversaryDate),
+  address: cleanString(body.address),
+  emergencyContactNumber: cleanString(body.emergencyContactNumber),
+  photo: cleanString(body.photo),
+  joiningDate: parseDate(body.joiningDate) || new Date(),
+  documentId: cleanString(body.documentId),
+  bodyStats: {
+    height: cleanString(body.bodyStats?.height),
+    weight: cleanString(body.bodyStats?.weight),
+    bmi: cleanString(body.bodyStats?.bmi),
+    bodyFat: cleanString(body.bodyStats?.bodyFat),
+    shoulder: cleanString(body.bodyStats?.shoulder),
+    chest: cleanString(body.bodyStats?.chest),
+    hips: cleanString(body.bodyStats?.hips),
+    abs: cleanString(body.bodyStats?.abs),
+    waistHip: cleanString(body.bodyStats?.waistHip),
+    bloodMeasurementDate: parseDate(body.bodyStats?.bloodMeasurementDate)
+  }
+});
+
+const buildMemberCode = async (gymId) => {
+  const gym = await Gym.findById(gymId).select('gymName').lean();
+  const prefix = cleanString(gym?.gymName)
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .slice(0, 3)
+    .toLowerCase() || 'fit';
+  const count = await Member.countDocuments({ gymId });
+  return `${prefix}${count + 1}`;
+};
 
 const addMember = async (req, res) => {
   try {
-    const { name, phone, email, joiningDate, planDuration } = req.body;
+    const payload = getMemberPayload(req.body);
 
     // Validation
-    if (!name || !phone || !planDuration) {
-      return res.status(400).json({ message: 'Name, phone, and plan duration are required' });
+    if (!payload.name || !payload.phone) {
+      return res.status(400).json({ message: 'Full name and mobile are required' });
     }
-
-    // Calculate expiry date
-    const joining = joiningDate ? new Date(joiningDate) : new Date();
-    const expiry = new Date(joining);
-    expiry.setMonth(expiry.getMonth() + parseInt(planDuration));
 
     const member = new Member({
       gymId: req.gymId,
-      name,
-      phone,
-      email,
-      joiningDate: joining,
-      planDuration: parseInt(planDuration),
-      expiryDate: expiry
+      memberCode: await buildMemberCode(req.gymId),
+      ...payload,
+      planDuration: Number(req.body.planDuration || 0),
+      expiryDate: parseDate(req.body.expiryDate),
     });
 
     await member.save();
     await member.populate('gymId', 'gymName');
-    await createLog(req.gymId, member._id, 'member_joined', `${name} joined the gym. Plan: ${planDuration} month(s).`);
+    await createLog(req.gymId, member._id, 'member_joined', `${member.name} joined the gym.`);
+
+    let welcomeEmail = { delivered: false, channel: 'msg91', reason: 'not_attempted' };
+    try {
+      welcomeEmail = await sendMemberWelcomeEmail({
+        toEmail: member.email,
+        memberName: member.name,
+        gymName: member.gymId?.gymName
+      });
+    } catch (emailError) {
+      console.error(`Welcome email failed for member ${member._id}:`, emailError.message);
+      welcomeEmail = { delivered: false, channel: 'msg91', reason: 'delivery_failed' };
+    }
 
     res.status(201).json({
       message: 'Member added successfully',
-      member
+      member,
+      welcomeEmail
     });
   } catch (error) {
     console.error('Add member error:', error);
@@ -203,7 +254,7 @@ const getExpiringMembers = async (req, res) => {
 
 const updateMember = async (req, res) => {
   try {
-    const { name, phone, email, planDuration } = req.body;
+    const payload = getMemberPayload(req.body);
 
     const member = await Member.findOne({ _id: req.params.id, gymId: req.gymId });
     
@@ -211,26 +262,10 @@ const updateMember = async (req, res) => {
       return res.status(404).json({ message: 'Member not found' });
     }
 
-    const planChanged = planDuration != null && parseInt(planDuration, 10) !== member.planDuration;
-
-    // Update fields
-    if (name) member.name = name;
-    if (phone) member.phone = phone;
-    if (email !== undefined) member.email = email;
-    if (planDuration) {
-      member.planDuration = parseInt(planDuration);
-      const expiry = new Date(member.joiningDate);
-      expiry.setMonth(expiry.getMonth() + parseInt(planDuration));
-      member.expiryDate = expiry;
-    }
+    Object.assign(member, payload);
 
     await member.save();
-
-    if (planChanged) {
-      await createLog(req.gymId, member._id, 'member_renewed', `Plan updated. New expiry: ${member.expiryDate.toISOString().slice(0, 10)}.`);
-    } else {
-      await createLog(req.gymId, member._id, 'member_updated', 'Member details updated.');
-    }
+    await createLog(req.gymId, member._id, 'member_updated', 'Member details updated.');
 
     res.json({
       message: 'Member updated successfully',
@@ -238,6 +273,77 @@ const updateMember = async (req, res) => {
     });
   } catch (error) {
     console.error('Update member error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+const assignMembership = async (req, res) => {
+  try {
+    const member = await Member.findOne({ _id: req.params.id, gymId: req.gymId });
+
+    if (!member) {
+      return res.status(404).json({ message: 'Member not found' });
+    }
+
+    const startDate = parseDate(req.body.startDate) || new Date();
+    const endDate = parseDate(req.body.endDate);
+    const amountPaid = cleanNumber(req.body.amountPaid);
+    const paymentMode = req.body.mode || 'cash';
+    const membershipPrice = cleanNumber(req.body.membershipPrice);
+    const extras = cleanNumber(req.body.extras);
+    const discount = cleanNumber(req.body.discount);
+    const totalAmountPayable = req.body.totalAmountPayable !== undefined
+      ? cleanNumber(req.body.totalAmountPayable)
+      : Math.max(membershipPrice + extras - discount, 0);
+
+    member.membershipAssignment = {
+      membershipName: cleanString(req.body.membershipName),
+      membershipId: req.body.membershipId || undefined,
+      startDate,
+      endDate,
+      plan: cleanString(req.body.plan),
+      diet: cleanString(req.body.diet),
+      trainer: cleanString(req.body.trainer),
+      trainerSlot: cleanString(req.body.trainerSlot),
+      membershipPrice,
+      extras,
+      discount,
+      totalAmountPayable,
+      invoiceDate: parseDate(req.body.invoiceDate) || new Date(),
+      salesManager: cleanString(req.body.salesManager),
+      note: cleanString(req.body.note),
+      invoiceSendEmail: Boolean(req.body.invoiceSendEmail),
+      amountPaid,
+      mode: paymentMode,
+      paymentDueDate: parseDate(req.body.paymentDueDate),
+      assignedAt: new Date()
+    };
+    member.planDuration = Math.max(
+      0,
+      Math.round(((endDate || startDate) - startDate) / (1000 * 60 * 60 * 24 * 30))
+    );
+    member.expiryDate = endDate;
+    member.status = endDate && endDate < new Date() ? 'expired' : 'active';
+
+    await member.save();
+
+    if (amountPaid > 0) {
+      const payment = new Payment({
+        gymId: req.gymId,
+        memberId: member._id,
+        amount: amountPaid,
+        paymentType: paymentMode,
+        paymentDate: parseDate(req.body.invoiceDate) || new Date(),
+        description: `Membership payment: ${member.membershipAssignment.membershipName || 'Membership'}`
+      });
+      await payment.save();
+    }
+
+    await createLog(req.gymId, member._id, 'member_renewed', `Membership assigned. End date: ${endDate ? endDate.toISOString().slice(0, 10) : 'not set'}.`);
+
+    res.json({ message: 'Membership assigned successfully', member });
+  } catch (error) {
+    console.error('Assign membership error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -317,6 +423,7 @@ module.exports = {
   getExpiringMembers,
   getMember,
   updateMember,
+  assignMembership,
   deleteMember,
   bulkUpdateMembers,
   bulkDeleteMembers,

@@ -5,8 +5,12 @@ const cors = require('cors');
 const { errorHandler, notFoundHandler } = require('./utils/errorHandler');
 const authRoutes = require('./routes/auth');
 const memberRoutes = require('./routes/members');
+const membershipRoutes = require('./routes/memberships');
 const paymentRoutes = require('./routes/payments');
 const dashboardRoutes = require('./routes/dashboard');
+const workoutPlanRoutes = require('./routes/workoutPlans');
+const dietPlanRoutes = require('./routes/dietPlans');
+const enquiryRoutes = require('./routes/enquiries');
 
 const DEFAULT_ORIGINS = [
   'http://localhost:5173',
@@ -55,8 +59,12 @@ const requestLogger = (req, res, next) => {
 const mountApiRoutes = (app, prefix) => {
   app.use(`${prefix}/auth`, authRoutes);
   app.use(`${prefix}/members`, memberRoutes);
+  app.use(`${prefix}/memberships`, membershipRoutes);
   app.use(`${prefix}/payments`, paymentRoutes);
   app.use(`${prefix}/dashboard`, dashboardRoutes);
+  app.use(`${prefix}/workout-plans`, workoutPlanRoutes);
+  app.use(`${prefix}/diet-plans`, dietPlanRoutes);
+  app.use(`${prefix}/enquiries`, enquiryRoutes);
 };
 
 const createApp = () => {

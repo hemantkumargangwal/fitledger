@@ -14,11 +14,15 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const DashboardLayout = lazy(() => import('./layouts/DashboardLayout'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Members = lazy(() => import('./pages/Members'));
+const Memberships = lazy(() => import('./pages/Memberships'));
+const WorkoutPlans = lazy(() => import('./pages/WorkoutPlans'));
+const DietPlans = lazy(() => import('./pages/DietPlans'));
 const Payments = lazy(() => import('./pages/Payments'));
 const AddPayment = lazy(() => import('./pages/AddPayment'));
 const Reports = lazy(() => import('./pages/Reports'));
 const Settings = lazy(() => import('./pages/Settings'));
 const MemberProfile = lazy(() => import('./pages/MemberProfile'));
+const Enquiries = lazy(() => import('./pages/Enquiries'));
 
 const AppFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-600" role="status">
@@ -53,10 +57,14 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="members" element={<Members />} />
             <Route path="members/:id" element={<MemberProfile />} />
+            <Route path="memberships" element={<Memberships />} />
+            <Route path="workout-plans" element={<WorkoutPlans />} />
+            <Route path="diet-plans" element={<DietPlans />} />
             <Route path="payments" element={<Payments />} />
             <Route path="payments/add" element={<AddPayment />} />
             <Route path="reports" element={<Reports />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="enquiries" element={<Enquiries />} />
           </Route>
           <Route path="/logout" element={<Navigate to="/login" replace />} />
           </Routes>

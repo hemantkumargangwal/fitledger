@@ -1,5 +1,216 @@
 const Member = require('../models/Member');
 const Payment = require('../models/Payment');
+const Enquiry = require('../models/Enquiry');
+const ActivityLog = require('../models/ActivityLog');
+
+const buildMonthSeries = (monthsBack = 6) => {
+  const now = new Date();
+  return Array.from({ length: monthsBack }).map((_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - (monthsBack - 1 - index), 1);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    return { key, label: date.toLocaleString('en-IN', { month: 'short' }) };
+  });
+};
+
+const getRange = (date) => ({
+  start: new Date(date.getFullYear(), date.getMonth(), date.getDate()),
+  end: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999)
+});
+
+const sumPaymentAmount = async (gymId, start, end) => {
+  const result = await Payment.aggregate([
+    { $match: { gymId, paymentDate: { $gte: start, $lte: end } } },
+    { $group: { _id: null, total: { $sum: '$amount' } } }
+  ]);
+
+  return result[0]?.total || 0;
+};
+
+const getOwnerOverview = async (req, res) => {
+  try {
+    const gymId = req.gymId;
+    const now = new Date();
+    const today = getRange(now);
+    const yesterday = new Date(today.start);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayRange = getRange(yesterday);
+    const last7DaysStart = new Date(today.start);
+    last7DaysStart.setDate(last7DaysStart.getDate() - 6);
+
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    const next30Days = new Date(today.start);
+    next30Days.setDate(next30Days.getDate() + 30);
+    const months = buildMonthSeries(6);
+    const firstSeriesMonth = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+    const [
+      totalMembers,
+      newThisMonth,
+      newLastMonth,
+      lostThisMonth,
+      lostLastMonth,
+      lostTotal,
+      incomeToday,
+      incomeThisMonth,
+      incomeLastMonth,
+      popularMembership,
+      incomeTrendRaw,
+      newTrendRaw,
+      lostTrendRaw,
+      renewTrendRaw,
+      dueTrendRaw,
+      visitsToday,
+      visitsYesterday,
+      visitsLast7Days,
+      enquiryTrendRaw,
+      genderDistributionRaw
+    ] = await Promise.all([
+      Member.countDocuments({ gymId }),
+      Member.countDocuments({ gymId, joiningDate: { $gte: startOfThisMonth, $lte: endOfThisMonth } }),
+      Member.countDocuments({ gymId, joiningDate: { $gte: startOfLastMonth, $lte: endOfLastMonth } }),
+      Member.countDocuments({ gymId, expiryDate: { $gte: startOfThisMonth, $lt: today.start } }),
+      Member.countDocuments({ gymId, expiryDate: { $gte: startOfLastMonth, $lte: endOfLastMonth } }),
+      Member.countDocuments({ gymId, expiryDate: { $lt: today.start } }),
+      sumPaymentAmount(gymId, today.start, today.end),
+      sumPaymentAmount(gymId, startOfThisMonth, endOfThisMonth),
+      sumPaymentAmount(gymId, startOfLastMonth, endOfLastMonth),
+      Member.aggregate([
+        { $match: { gymId, 'membershipAssignment.membershipName': { $exists: true, $ne: '' } } },
+        {
+          $group: {
+            _id: {
+              name: '$membershipAssignment.membershipName',
+              durationMonths: '$planDuration'
+            },
+            members: { $sum: 1 }
+          }
+        },
+        { $sort: { members: -1 } },
+        { $limit: 1 }
+      ]),
+      Payment.aggregate([
+        { $match: { gymId, paymentDate: { $gte: firstSeriesMonth } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m', date: '$paymentDate' } },
+            value: { $sum: '$amount' }
+          }
+        }
+      ]),
+      Member.aggregate([
+        { $match: { gymId, joiningDate: { $gte: firstSeriesMonth } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m', date: '$joiningDate' } },
+            value: { $sum: 1 }
+          }
+        }
+      ]),
+      Member.aggregate([
+        { $match: { gymId, expiryDate: { $gte: firstSeriesMonth, $lt: today.start } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m', date: '$expiryDate' } },
+            value: { $sum: 1 }
+          }
+        }
+      ]),
+      ActivityLog.aggregate([
+        { $match: { gymId, action: 'member_renewed', createdAt: { $gte: firstSeriesMonth } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+            value: { $sum: 1 }
+          }
+        }
+      ]),
+      Member.aggregate([
+        {
+          $match: {
+            gymId,
+            'membershipAssignment.paymentDueDate': { $gte: firstSeriesMonth },
+            $expr: {
+              $gt: [
+                { $subtract: ['$membershipAssignment.totalAmountPayable', '$membershipAssignment.amountPaid'] },
+                0
+              ]
+            }
+          }
+        },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m', date: '$membershipAssignment.paymentDueDate' } },
+            value: {
+              $sum: { $subtract: ['$membershipAssignment.totalAmountPayable', '$membershipAssignment.amountPaid'] }
+            }
+          }
+        }
+      ]),
+      Enquiry.countDocuments({ gymId, enquiryDate: { $gte: today.start, $lte: today.end } }),
+      Enquiry.countDocuments({ gymId, enquiryDate: { $gte: yesterdayRange.start, $lte: yesterdayRange.end } }),
+      Enquiry.countDocuments({ gymId, enquiryDate: { $gte: last7DaysStart, $lte: today.end } }),
+      Enquiry.aggregate([
+        { $match: { gymId, enquiryDate: { $gte: firstSeriesMonth } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m', date: '$enquiryDate' } },
+            value: { $sum: 1 }
+          }
+        }
+      ]),
+      Member.aggregate([
+        { $match: { gymId, gender: { $in: ['male', 'female', 'other'] } } },
+        { $group: { _id: '$gender', value: { $sum: 1 } } }
+      ])
+    ]);
+
+    const mapSeries = (raw) => {
+      const lookup = new Map(raw.map((item) => [item._id, item.value]));
+      return months.map((month) => ({ month: month.key, label: month.label, value: lookup.get(month.key) || 0 }));
+    };
+
+    const incomeByMonth = mapSeries(incomeTrendRaw);
+    const expenseByMonth = months.map((month) => ({ month: month.key, label: month.label, value: 0 }));
+
+    res.json({
+      cards: {
+        visits: { today: visitsToday, yesterday: visitsYesterday, last7Days: visitsLast7Days },
+        popularMembership: {
+          name: popularMembership[0]?._id?.name || 'No membership assigned',
+          durationMonths: popularMembership[0]?._id?.durationMonths || 0,
+          members: popularMembership[0]?.members || 0
+        },
+        expenses: { today: 0, thisMonth: 0, lastMonth: 0 },
+        members: { total: totalMembers, newThisMonth, newLastMonth },
+        memberLost: { thisMonth: lostThisMonth, lastMonth: lostLastMonth, total: lostTotal },
+        profit: {
+          today: incomeToday,
+          thisMonth: incomeThisMonth,
+          lastMonth: incomeLastMonth
+        }
+      },
+      charts: {
+        expense: expenseByMonth,
+        income: incomeByMonth,
+        enquiry: mapSeries(enquiryTrendRaw),
+        paymentDue: mapSeries(dueTrendRaw),
+        genderDistribution: ['male', 'female', 'other'].map((gender) => ({
+          name: gender.charAt(0).toUpperCase() + gender.slice(1),
+          value: genderDistributionRaw.find((item) => item._id === gender)?.value || 0
+        })),
+        memberLost: mapSeries(lostTrendRaw),
+        newMembers: mapSeries(newTrendRaw),
+        renewals: mapSeries(renewTrendRaw)
+      }
+    });
+  } catch (error) {
+    console.error('Owner overview error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 
 const getDashboardStats = async (req, res) => {
   try {
@@ -393,5 +604,6 @@ module.exports = {
   getRevenueSummary,
   getDailyRevenue,
   getExpiringAlerts,
-  getGymActivity
+  getGymActivity,
+  getOwnerOverview
 };

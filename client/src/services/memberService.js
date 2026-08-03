@@ -31,6 +31,11 @@ export const memberService = {
     return response.data;
   },
 
+  assignMembership: async (id, assignmentData) => {
+    const response = await api.post(`/members/${id}/assign-membership`, assignmentData);
+    return response.data;
+  },
+
   // Delete member
   deleteMember: async (id) => {
     const response = await api.delete(`/members/${id}`);
