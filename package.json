@@ -1,5 +1,5 @@
 {
-  "name": "fitledger",
+  "name": "fitsaarthi",
   "version": "1.0.0",
   "description": "Gym Management SaaS Application",
   "main": "server/index.js",
@@ -19,7 +19,7 @@
     "saas",
     "mern"
   ],
-  "author": "FitLedger Team",
+  "author": "FitSaarthi Team",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"

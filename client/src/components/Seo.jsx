@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 
-const DEFAULT_SITE_NAME = 'FitLedger';
-const DEFAULT_SITE_URL = 'https://fitledger.brainstacks.in';
+const DEFAULT_SITE_NAME = 'FitSaarthi';
+// Override this in production with VITE_SITE_URL, including the https:// prefix.
+const DEFAULT_SITE_URL = 'https://fitsaarthi.brainstacks.in';
 const DEFAULT_IMAGE_PATH = '/og-image.svg';
 
 const ensureMetaTag = (selector, attributes) => {

@@ -1,6 +1,6 @@
-# FitLedger - Gym Management SaaS
+# FitSaarthi - Gym Management SaaS
 
-A modern, full-stack gym management system built with the MERN stack. FitLedger helps gym owners manage members, track payments, and monitor business growth with beautiful analytics.
+A modern, full-stack gym management system built with the MERN stack. FitSaarthi helps gym owners manage members, track payments, and monitor business growth with beautiful analytics.
 
 ## 🏋️ Features
 
@@ -109,6 +109,7 @@ fitledger/
    MONGODB_URI=mongodb://localhost:27017/fitledger
    JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
    NODE_ENV=development
+   MSG91_AUTH_KEY=your-msg91-auth-key
    ```
 
 4. **Start the application**

@@ -6,7 +6,7 @@ const User = require('../models/User');
 const { sendPasswordResetOtp } = require('../services/emailService');
 const { AppError } = require('../utils/errorHandler');
 
-const TRIAL_DURATION_DAYS = 90;
+const TRIAL_DURATION_DAYS = 30;
 const RESET_TTL_MS = 10 * 60 * 1000;
 const RESET_MAX_ATTEMPTS = 5;
 

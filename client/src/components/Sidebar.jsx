@@ -58,7 +58,7 @@ const Sidebar = ({
             </div>
             {!collapsed && (
               <div className="min-w-0">
-                <p className="truncate text-lg font-extrabold tracking-tight text-white">FitLedger</p>
+                <p className="truncate text-lg font-extrabold tracking-tight text-white">FitSaarthi</p>
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-lime-400">Gym OS</p>
               </div>
             )}

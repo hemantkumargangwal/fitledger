@@ -41,7 +41,7 @@ const Login = () => {
     <div className="min-h-screen bg-[#f4f6f2] lg:grid lg:grid-cols-[minmax(460px,0.9fr)_minmax(560px,1.1fr)]">
       <Seo
         title="Login"
-        description="Sign in to your FitLedger account to manage gym members, payments, renewals and reports."
+        description="Sign in to your FitSaarthi account to manage gym members, payments, renewals and reports."
         path="/login"
         robots="noindex, nofollow"
       />
@@ -55,7 +55,7 @@ const Login = () => {
               <Dumbbell size={24} strokeWidth={2.7} />
             </span>
             <span>
-              <span className="block text-xl font-black tracking-tight">FitLedger</span>
+              <span className="block text-xl font-black tracking-tight">FitSaarthi</span>
               <span className="block text-[10px] font-extrabold uppercase tracking-[0.24em] text-lime-400">Gym OS</span>
             </span>
           </Link>
@@ -87,7 +87,7 @@ const Login = () => {
           </div>
         </div>
 
-        <p className="relative text-xs text-slate-600">© {new Date().getFullYear()} FitLedger. Built for stronger gym businesses.</p>
+        <p className="relative text-xs text-slate-600">© {new Date().getFullYear()} FitSaarthi. Built for stronger gym businesses.</p>
       </section>
 
       <main className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-8">
@@ -96,7 +96,7 @@ const Login = () => {
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-lime-400 text-slate-950">
               <Dumbbell size={22} strokeWidth={2.7} />
             </span>
-            <span className="text-xl font-black tracking-tight text-slate-950">FitLedger</span>
+            <span className="text-xl font-black tracking-tight text-slate-950">FitSaarthi</span>
           </Link>
 
           <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-lime-700">Owner workspace</p>

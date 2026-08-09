@@ -13,7 +13,7 @@ const DashboardLayout = () => {
     <div className="flex h-screen overflow-hidden bg-[#f4f6f2]">
       <Seo
         title="Dashboard"
-        description="Secure FitLedger dashboard for managing gym members, subscriptions, payments, and reports."
+        description="Secure FitSaarthi dashboard for managing gym members, subscriptions, payments, and reports."
         path={location.pathname}
         robots="noindex, nofollow"
       />

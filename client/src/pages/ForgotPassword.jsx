@@ -45,7 +45,7 @@ const ForgotPassword = () => {
       title="Reset your password"
       description="Enter the email registered with your owner account. We’ll send a verification code if the account exists."
     >
-      <Seo title="Forgot Password" description="Request an OTP to reset your FitLedger account password." path="/forgot-password" robots="noindex, nofollow" />
+      <Seo title="Forgot Password" description="Request an OTP to reset your FitSaarthi account password." path="/forgot-password" robots="noindex, nofollow" />
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{error}</div>}
         <div>

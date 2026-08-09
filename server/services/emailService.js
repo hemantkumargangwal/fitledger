@@ -2,6 +2,13 @@ const nodemailer = require('nodemailer');
 const https = require('https');
 
 let cachedTransporter = null;
+const MSG91_EMAIL_DEFAULTS = Object.freeze({
+  welcomeTemplateId: 'template_03_08_2026_19_08_2',
+  fromName: 'Brainstacks Support',
+  fromEmail: 'support@brainstacks.in',
+  domain: 'mail.brainstacks.in'
+});
+
 const hasSmtpConfig = () => {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
   return Boolean(SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS);
@@ -53,11 +60,11 @@ const sendPasswordResetOtp = async ({ toEmail, ownerName, otp }) => {
   await transporter.sendMail({
     from: fromAddress,
     to: toEmail,
-    subject: 'FitLedger password reset OTP',
-    text: `Hi ${ownerName || 'there'}, your FitLedger password reset OTP is ${otp}. It will expire in 10 minutes.`,
+    subject: 'FitSaarthi password reset OTP',
+    text: `Hi ${ownerName || 'there'}, your FitSaarthi password reset OTP is ${otp}. It will expire in 10 minutes.`,
     html: `
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
-        <h2 style="margin-bottom: 8px;">FitLedger Password Reset</h2>
+        <h2 style="margin-bottom: 8px;">FitSaarthi Password Reset</h2>
         <p>Hi ${ownerName || 'there'},</p>
         <p>Your OTP for resetting the password is:</p>
         <div style="font-size: 28px; font-weight: 700; letter-spacing: 6px; margin: 16px 0; color: #d97706;">
@@ -76,28 +83,31 @@ const sendPasswordResetOtp = async ({ toEmail, ownerName, otp }) => {
 };
 
 const getMsg91EmailConfig = () => {
-  const {
-    MSG91_AUTH_KEY,
-    MSG91_EMAIL_FROM_NAME,
-    MSG91_EMAIL_FROM,
-    MSG91_EMAIL_DOMAIN,
-    MSG91_EMAIL_TEMPLATE_ID = 'global_otp'
-  } = process.env;
 
-  if (!MSG91_AUTH_KEY || !MSG91_EMAIL_FROM || !MSG91_EMAIL_DOMAIN) {
+  console.log('MSG91_AUTH_KEY:', process.env.MSG91_AUTH_KEY);
+  if (!process.env.MSG91_AUTH_KEY) {
     return null;
   }
-
+  const data = {
+    authKey: process.env.MSG91_AUTH_KEY,
+    fromName: MSG91_EMAIL_DEFAULTS.fromName,
+    fromEmail: MSG91_EMAIL_DEFAULTS.fromEmail,
+    domain: MSG91_EMAIL_DEFAULTS.domain,
+    templateId: process.env.MSG91_EMAIL_TEMPLATE_ID || 'global_otp'
+  };
+  console.log('MSG91 email config:', data);
+  return data;
   return {
-    authKey: MSG91_AUTH_KEY,
-    fromName: MSG91_EMAIL_FROM_NAME || 'FitLedger',
-    fromEmail: MSG91_EMAIL_FROM,
-    domain: MSG91_EMAIL_DOMAIN,
-    templateId: MSG91_EMAIL_TEMPLATE_ID
+    authKey: process.env.MSG91_AUTH_KEY,
+    fromName: MSG91_EMAIL_DEFAULTS.fromName,
+    fromEmail: MSG91_EMAIL_DEFAULTS.fromEmail,
+    domain: MSG91_EMAIL_DEFAULTS.domain,
+    templateId: process.env.MSG91_EMAIL_TEMPLATE_ID || 'global_otp'
   };
 };
 
 const sendMsg91EmailRequest = (payload, authKey) => new Promise((resolve, reject) => {
+  console.warn('Sending MSG91 email request:', payload);
   const request = https.request({
     method: 'POST',
     hostname: 'control.msg91.com',
@@ -149,28 +159,33 @@ const sendMsg91TemplateEmail = async ({
     return { delivered: false, channel: 'msg91', reason: 'recipient_email_missing' };
   }
 
-  const config = getMsg91EmailConfig();
-  if (!config) {
-    console.warn('MSG91 email skipped: MSG91_AUTH_KEY, MSG91_EMAIL_FROM, and MSG91_EMAIL_DOMAIN must be configured.');
-    return { delivered: false, channel: 'msg91', reason: 'msg91_not_configured' };
-  }
-
+  // const config = getMsg91EmailConfig();
+  // if (!config) {
+  //   console.warn('MSG91 email skipped: MSG91_AUTH_KEY must be configured.');
+  //   return { delivered: false, channel: 'msg91', reason: 'msg91_not_configured' };
+  // }
+const data = {
+    authKey: process.env.MSG91_AUTH_KEY,
+    fromName: MSG91_EMAIL_DEFAULTS.fromName,
+    fromEmail: MSG91_EMAIL_DEFAULTS.fromEmail,
+    domain: MSG91_EMAIL_DEFAULTS.domain,
+    templateId: process.env.MSG91_EMAIL_TEMPLATE_ID || 'global_otp'
+  };
+  console.log('MSG91 email data:', data);
   await sendMsg91EmailRequest({
     recipients: [{
       to: [{ name: recipientName || toEmail, email: toEmail }],
       variables: {
-        company_name: companyName || config.fromName,
-        name: recipientName || 'Member',
         ...variables
       }
     }],
-    from: { name: companyName || config.fromName, email: config.fromEmail },
-    domain: config.domain,
-    template_id: templateId || config.templateId,
-    validate_before_send: true
-  }, config.authKey);
+    from: { name: companyName || data.fromName, email: data.fromEmail },
+    domain: data.domain,
+    template_id: templateId || data.templateId,
+    validate_before_send: false
+  }, data.authKey);
 
-  return { delivered: true, channel: 'msg91', templateId: templateId || config.templateId };
+  return { delivered: true, channel: 'msg91', templateId: templateId || data.templateId };
 };
 
 const sendMemberWelcomeEmail = async ({ toEmail, memberName, gymName }) => {
@@ -178,7 +193,11 @@ const sendMemberWelcomeEmail = async ({ toEmail, memberName, gymName }) => {
     toEmail,
     recipientName: memberName,
     companyName: gymName,
-    templateId: process.env.MSG91_WELCOME_EMAIL_TEMPLATE_ID || process.env.MSG91_EMAIL_TEMPLATE_ID
+    // This key must match the variable configured in the MSG91 welcome template.
+    variables: {
+      GYM_NAME: gymName || 'FitSaarthi'
+    },
+    templateId: MSG91_EMAIL_DEFAULTS.welcomeTemplateId
   });
 };
 

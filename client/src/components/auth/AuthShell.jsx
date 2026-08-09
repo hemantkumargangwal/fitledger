@@ -10,7 +10,7 @@ const AuthShell = ({ eyebrow, title, description, children }) => (
           <Dumbbell size={24} strokeWidth={2.7} />
         </span>
         <span>
-          <span className="block text-xl font-black tracking-tight">FitLedger</span>
+          <span className="block text-xl font-black tracking-tight">FitSaarthi</span>
           <span className="block text-[10px] font-extrabold uppercase tracking-[0.24em] text-lime-400">Gym OS</span>
         </span>
       </Link>
@@ -34,7 +34,7 @@ const AuthShell = ({ eyebrow, title, description, children }) => (
           <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-lime-400 text-slate-950">
             <Dumbbell size={22} strokeWidth={2.7} />
           </span>
-          <span className="text-xl font-black tracking-tight text-slate-950">FitLedger</span>
+          <span className="text-xl font-black tracking-tight text-slate-950">FitSaarthi</span>
         </Link>
         <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-lime-700">{eyebrow}</p>
         <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">{title}</h1>

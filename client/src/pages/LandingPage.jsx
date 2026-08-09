@@ -43,6 +43,8 @@ const LandingPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState(null);
+  const [billingCycle, setBillingCycle] = useState('monthly');
+  const siteUrl = (import.meta.env.VITE_SITE_URL || 'https://fitsaarthi.brainstacks.in').replace(/\/$/, '');
 
   const features = [
     {
@@ -94,7 +96,7 @@ const LandingPage = () => {
       name: 'Sarah Johnson',
       role: 'Gym Owner',
       gym: 'FitZone Gym',
-      content: 'FitLedger has transformed how I manage my gym. The member tracking and payment features have saved me countless hours each month.',
+      content: 'FitSaarthi has transformed how I manage my gym. The member tracking and payment features have saved me countless hours each month.',
       rating: 5,
       avatar: 'SJ'
     },
@@ -110,7 +112,7 @@ const LandingPage = () => {
       name: 'Emily Rodriguez',
       role: 'Studio Owner',
       gym: 'Yoga Flow Studio',
-      content: 'Simple, intuitive, and powerful. FitLedger handles everything from member management to payments seamlessly.',
+      content: 'Simple, intuitive, and powerful. FitSaarthi handles everything from member management to payments seamlessly.',
       rating: 5,
       avatar: 'ER'
     }
@@ -123,23 +125,23 @@ const LandingPage = () => {
     },
     {
       question: 'Can I import existing member data?',
-      answer: 'Yes! FitLedger supports easy data import from CSV files. Our team can also help you migrate data from other gym management systems to ensure a smooth transition.'
+      answer: 'Yes! FitSaarthi supports easy data import from CSV files. Our team can also help you migrate data from other gym management systems to ensure a smooth transition.'
     },
     {
       question: 'What payment methods are supported?',
-      answer: 'FitLedger supports cash, card payments, UPI, and other digital payment methods. You can track all payment types in one unified dashboard and generate detailed reports.'
+      answer: 'FitSaarthi supports cash, card payments, UPI, and other digital payment methods. You can track all payment types in one unified dashboard and generate detailed reports.'
     },
     {
       question: 'Is there a mobile app available?',
-      answer: 'While we don\'t have a dedicated mobile app yet, FitLedger is fully responsive and works perfectly on all mobile devices. You can access all features from your smartphone or tablet.'
+      answer: 'While we don\'t have a dedicated mobile app yet, FitSaarthi is fully responsive and works perfectly on all mobile devices. You can access all features from your smartphone or tablet.'
     },
     {
       question: 'Can I customize membership plans?',
-      answer: 'Absolutely! FitLedger allows you to create custom membership plans with different durations, pricing, and features. You can set up unlimited plan types to match your gym\'s offerings.'
+      answer: 'Absolutely! FitSaarthi allows you to create custom membership plans with different durations, pricing, and features. You can set up unlimited plan types to match your gym\'s offerings.'
     },
     {
       question: 'How does the free trial work?',
-      answer: 'Start with a 90-day free trial with full access to all features. No credit card required. After the trial, choose the plan that best fits your gym size and member count.'
+      answer: 'Start with a 30-day free trial with full access to all features. No credit card required. After the trial, choose the plan that best fits your gym size and member count.'
     }
   ];
 
@@ -147,6 +149,7 @@ const LandingPage = () => {
     {
       name: 'Starter',
       price: '199',
+      yearlyPrice: '1,990',
       description: 'Best for gyms with up to 100 active members',
       features: [
         'Up to 100 members',
@@ -161,6 +164,7 @@ const LandingPage = () => {
     {
       name: 'Growth',
       price: '299',
+      yearlyPrice: '2,990',
       description: 'Perfect for growing gyms managing up to 200 members',
       features: [
         'Up to 200 members',
@@ -175,6 +179,7 @@ const LandingPage = () => {
     {
       name: 'Enterprise',
       price: '599',
+      yearlyPrice: '5,990',
       description: 'For high-volume gyms that need unlimited member management',
       features: [
         'Unlimited members',
@@ -193,39 +198,39 @@ const LandingPage = () => {
     '@graph': [
       {
         '@type': 'Organization',
-        '@id': 'https://fitledger.brainstacks.in/#organization',
-        name: 'FitLedger',
-        url: 'https://fitledger.brainstacks.in/',
-        logo: 'https://fitledger.brainstacks.in/favicon.svg',
+        '@id': `${siteUrl}/#organization`,
+        name: 'FitSaarthi',
+        url: `${siteUrl}/`,
+        logo: `${siteUrl}/favicon.svg`,
         contactPoint: [
           {
             '@type': 'ContactPoint',
             contactType: 'sales',
-            url: 'https://fitledger.brainstacks.in/register'
+            url: `${siteUrl}/register`
           }
         ]
       },
       {
         '@type': 'WebSite',
-        '@id': 'https://fitledger.brainstacks.in/#website',
-        url: 'https://fitledger.brainstacks.in/',
-        name: 'FitLedger',
+        '@id': `${siteUrl}/#website`,
+        url: `${siteUrl}/`,
+        name: 'FitSaarthi',
         publisher: {
-          '@id': 'https://fitledger.brainstacks.in/#organization'
+          '@id': `${siteUrl}/#organization`
         }
       },
       {
         '@type': 'SoftwareApplication',
-        name: 'FitLedger',
+        name: 'FitSaarthi',
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'Web',
-        url: 'https://fitledger.brainstacks.in/',
-        description: 'FitLedger helps gyms manage memberships, payments, renewals, analytics and daily operations from one place.',
+        url: `${siteUrl}/`,
+        description: 'FitSaarthi helps gyms manage memberships, payments, renewals, analytics and daily operations from one place.',
         offers: {
           '@type': 'Offer',
           price: '0',
           priceCurrency: 'INR',
-          description: '90-day free trial'
+          description: '30-day free trial'
         }
       },
       {
@@ -253,8 +258,8 @@ const LandingPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
       <Seo
-        title="FitLedger | Best Gym Management Software"
-        description="FitLedger is gym management software that helps fitness businesses manage members, payments, renewals, analytics and reports from one dashboard."
+        title="Gym Management Software for India"
+        description="FitSaarthi is gym management software for India that helps gym owners manage members, payments, renewals, attendance, analytics and reports from one dashboard."
         path="/"
         keywords={[
           'gym management software',
@@ -273,7 +278,7 @@ const LandingPage = () => {
               <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-soft">
                 <Dumbbell className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">FitLedger</span>
+              <span className="text-xl font-bold text-gray-900">FitSaarthi</span>
             </div>
             
             <div className="hidden md:flex items-center space-x-8">
@@ -359,7 +364,7 @@ const LandingPage = () => {
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-success-500" />
-                90-day free trial
+                30-day free trial
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-success-500" />
@@ -378,7 +383,7 @@ const LandingPage = () => {
                     <div className="w-20 h-20 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-soft">
                       <BarChart3 className="w-10 h-10 text-white" />
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">FitLedger Dashboard</h3>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">FitSaarthi Dashboard</h3>
                     <p className="text-gray-600 mb-6">Complete gym management solution</p>
                     <div className="flex items-center justify-center gap-8">
                       <div className="text-center">
@@ -441,7 +446,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              See FitLedger in Action
+              See FitSaarthi in Action
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Take a tour of our powerful gym management interface
@@ -513,7 +518,7 @@ const LandingPage = () => {
               See How It Works
             </h2>
             <p className="text-xl text-gray-600">
-              Watch our 2-minute demo to see FitLedger in action
+              Watch our 2-minute demo to see FitSaarthi in action
             </p>
           </div>
 
@@ -529,7 +534,7 @@ const LandingPage = () => {
               </div>
               <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-gray-900 to-transparent">
                 <h3 className="text-white text-xl font-semibold mb-2">Complete Gym Management Solution</h3>
-                <p className="text-gray-300">Learn how FitLedger can transform your gym business</p>
+                <p className="text-gray-300">Learn how FitSaarthi can transform your gym business</p>
               </div>
             </div>
           </div>
@@ -544,7 +549,7 @@ const LandingPage = () => {
               Loved by Gym Owners Worldwide
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              See what fitness professionals are saying about FitLedger
+              See what fitness professionals are saying about FitSaarthi
             </p>
           </div>
 
@@ -582,8 +587,30 @@ const LandingPage = () => {
               Simple, Transparent Pricing
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Choose the right plan for your gym size. Start with a 90-day free trial.
+              Choose the right plan for your gym size. Start with a 30-day free trial.
             </p>
+            <div className="mt-8 inline-flex items-center rounded-xl border border-gray-200 bg-gray-50 p-1.5 shadow-sm" role="group" aria-label="Billing cycle">
+              <button
+                type="button"
+                onClick={() => setBillingCycle('monthly')}
+                className={`rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors ${
+                  billingCycle === 'monthly' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                }`}
+                aria-pressed={billingCycle === 'monthly'}
+              >
+                Monthly
+              </button>
+              <button
+                type="button"
+                onClick={() => setBillingCycle('yearly')}
+                className={`rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors ${
+                  billingCycle === 'yearly' ? 'bg-primary-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                }`}
+                aria-pressed={billingCycle === 'yearly'}
+              >
+                Yearly <span className="ml-1 text-xs">Save 2 months</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -606,8 +633,18 @@ const LandingPage = () => {
                   <p className="text-gray-600 mb-6">{plan.description}</p>
                   
                   <div className="mb-6">
-                    <span className="text-4xl font-bold text-gray-900">₹{plan.price}</span>
-                    <span className="text-gray-600">/month</span>
+                    <span className="text-4xl font-bold text-gray-900">₹{billingCycle === 'yearly' ? plan.yearlyPrice : plan.price}</span>
+                    <span className="text-gray-600">/{billingCycle === 'yearly' ? 'year' : 'month'}</span>
+                    <p className="mt-2 text-sm font-medium text-gray-500">
+                      {billingCycle === 'yearly'
+                        ? `₹${Math.round(Number(plan.price) * 10 / 12)}/month, billed yearly`
+                        : 'Billed monthly'}
+                    </p>
+                    {billingCycle === 'yearly' && (
+                      <p className="mt-1 text-sm font-semibold text-success-600">
+                        Save ₹{Number(plan.price) * 2} every year
+                      </p>
+                    )}
                   </div>
 
                   <ul className="space-y-3 mb-8">
@@ -687,7 +724,7 @@ const LandingPage = () => {
               Ready to Transform Your Gym Management?
             </h2>
             <p className="text-xl text-gray-600 mb-8">
-              Join thousands of gym owners who have already streamlined their operations with FitLedger.
+              Start managing your gym operations with FitSaarthi.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/register" className="btn-primary text-lg px-8 py-4">
@@ -698,7 +735,7 @@ const LandingPage = () => {
               </Link>
             </div>
             <p className="text-sm text-gray-500 mt-6">
-              No credit card required • 90-day free trial • Cancel anytime
+              No credit card required • 30-day free trial • Cancel anytime
             </p>
           </div>
         </div>
@@ -713,7 +750,7 @@ const LandingPage = () => {
                 <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center">
                   <Dumbbell className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-xl font-bold">FitLedger</span>
+                <span className="text-xl font-bold">FitSaarthi</span>
               </div>
               <p className="text-gray-400 mb-6">
                 The modern gym management solution for fitness businesses of all sizes.
@@ -769,7 +806,7 @@ const LandingPage = () => {
           <div className="border-t border-gray-800 pt-8">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <p className="text-gray-400 mb-4 md:mb-0">
-                &copy; 2024 FitLedger. All rights reserved.
+                &copy; {new Date().getFullYear()} FitSaarthi. All rights reserved.
               </p>
               <div className="flex items-center space-x-6 text-gray-400">
                 <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
@@ -801,7 +838,7 @@ const LandingPage = () => {
                 <div className="aspect-video bg-gray-900 flex items-center justify-center">
                   <div className="text-center text-white">
                     <Play className="w-16 h-16 mx-auto mb-4 text-primary-400" />
-                    <h3 className="text-xl font-semibold mb-2">FitLedger Demo Video</h3>
+                    <h3 className="text-xl font-semibold mb-2">FitSaarthi Demo Video</h3>
                     <p className="text-gray-400">Video would be embedded here</p>
                   </div>
                 </div>

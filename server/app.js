@@ -16,6 +16,7 @@ const DEFAULT_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
   'https://fitledger.vercel.app',
+  'https://fitsaarthi.vercel.app',
 ];
 
 const getAllowedOrigins = () => [

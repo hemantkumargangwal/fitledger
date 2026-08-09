@@ -3,11 +3,13 @@
   "outputDirectory": "client/dist",
   "installCommand": "npm install",
   "env": {
-    "VITE_API_URL": "https://fitledger-6pvt.onrender.com/api"
+    "VITE_API_URL": "https://fitledger-6pvt.onrender.com/api",
+    "VITE_SITE_URL": "https://fitsaarthi.brainstacks.in"
   },
   "build": {
     "env": {
-      "VITE_API_URL": "https://fitledger-6pvt.onrender.com/api"
+      "VITE_API_URL": "https://fitledger-6pvt.onrender.com/api",
+      "VITE_SITE_URL": "https://fitsaarthi.brainstacks.in"
     }
   }
 }

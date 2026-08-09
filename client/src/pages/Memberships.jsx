@@ -270,7 +270,7 @@ const Memberships = () => {
           </button>
           <button type="button" onClick={openAddModal} className="btn-primary">
             <Plus className="h-4 w-4" />
-            Add New Membership
+            ship
           </button>
         </div>
       </div>

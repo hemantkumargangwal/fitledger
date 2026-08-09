@@ -71,7 +71,7 @@ const Layout = ({ children }) => {
               <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-soft">
                 <Dumbbell className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">FitLedger</span>
+              <span className="text-xl font-bold text-gray-900">FitSaarthi</span>
             </div>
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -149,7 +149,7 @@ const Layout = ({ children }) => {
               <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-soft">
                 <Dumbbell className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">FitLedger</span>
+              <span className="text-xl font-bold text-gray-900">FitSaarthi</span>
             </div>
           </div>
           
@@ -266,7 +266,7 @@ const Layout = ({ children }) => {
               <div className="w-6 h-6 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
                 <Dumbbell className="w-4 h-4 text-white" />
               </div>
-              <span className="text-lg font-bold text-gray-900">FitLedger</span>
+              <span className="text-lg font-bold text-gray-900">FitSaarthi</span>
             </div>
             <div className="w-9"></div>
           </div>

@@ -38,13 +38,13 @@ const gymSchema = new mongoose.Schema({
     type: Date,
     default: () => {
       const trialEndsAt = new Date();
-      trialEndsAt.setDate(trialEndsAt.getDate() + 90);
+      trialEndsAt.setDate(trialEndsAt.getDate() + 30);
       return trialEndsAt;
     }
   },
   trialDurationDays: {
     type: Number,
-    default: 90
+    default: 30
   },
   createdAt: {
     type: Date,

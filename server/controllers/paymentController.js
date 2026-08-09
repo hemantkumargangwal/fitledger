@@ -339,7 +339,7 @@ const generateReceipt = async (req, res) => {
     }
 
     const lines = [
-      'FitLedger Payment Receipt',
+      'FitSaarthi Payment Receipt',
       `Receipt ID: ${payment._id}`,
       `Member: ${payment.memberId?.name || 'Unknown'}`,
       `Phone: ${payment.memberId?.phone || '—'}`,

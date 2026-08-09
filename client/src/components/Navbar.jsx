@@ -18,7 +18,7 @@ const pageMeta = {
 const getPageMeta = (pathname) => {
   if (pageMeta[pathname]) return pageMeta[pathname];
   if (pathname.startsWith('/members/')) return ['Member profile', 'Membership, payment and activity details'];
-  return ['FitLedger', 'Gym management workspace'];
+  return ['FitSaarthi', 'Gym management workspace'];
 };
 
 const Navbar = ({ onOpenMobile = () => {} }) => {

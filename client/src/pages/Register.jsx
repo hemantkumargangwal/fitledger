@@ -76,7 +76,7 @@ const Register = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <Seo
         title="Start Your Free Trial"
-        description="Create your FitLedger account and start a free trial for gym member management, payment tracking and reporting."
+        description="Create your FitSaarthi account and start a free trial for gym member management, payment tracking and reporting."
         path="/register"
         robots="noindex, nofollow"
       />
@@ -247,7 +247,7 @@ const Register = () => {
 
             <div className="mt-6 grid grid-cols-1 gap-3">
               {[
-                '✓ Free 90-day trial',
+                '✓ Free 30-day trial',
                 '✓ No credit card required',
                 '✓ Cancel anytime',
                 '✓ 24/7 customer support'

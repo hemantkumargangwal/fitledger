@@ -1,6 +1,6 @@
 {
-  "name": "FitLedger",
-  "short_name": "FitLedger",
+  "name": "FitSaarthi",
+  "short_name": "FitSaarthi",
   "description": "Gym management software for member tracking, payments, renewals and reports.",
   "start_url": "/",
   "display": "standalone",

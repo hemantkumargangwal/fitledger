@@ -1,7 +1,7 @@
 {
-  "name": "fitledger-server",
+  "name": "fitsaarthi-server",
   "version": "1.0.0",
-  "description": "FitLedger Backend API",
+  "description": "FitSaarthi Backend API",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

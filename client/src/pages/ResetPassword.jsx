@@ -57,7 +57,7 @@ const ResetPassword = () => {
       title="Choose a new password"
       description="Use the 6-digit code from your email. The code expires in 10 minutes and works only once."
     >
-      <Seo title="Reset Password" description="Verify OTP and set a new password for your FitLedger account." path="/reset-password" robots="noindex, nofollow" />
+      <Seo title="Reset Password" description="Verify OTP and set a new password for your FitSaarthi account." path="/reset-password" robots="noindex, nofollow" />
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{error}</div>}
 

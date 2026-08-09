@@ -9,13 +9,13 @@ const startServer = async () => {
   await connectDB();
   const app = createApp();
   return app.listen(PORT, () => {
-    console.log(`FitLedger API listening on port ${PORT}`);
+    console.log(`FitSaarthi API listening on port ${PORT}`);
   });
 };
 
 if (require.main === module) {
   startServer().catch((error) => {
-    console.error('Unable to start FitLedger API', error);
+    console.error('Unable to start FitSaarthi API', error);
     process.exit(1);
   });
 }

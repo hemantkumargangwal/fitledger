@@ -89,7 +89,7 @@ const Settings = () => {
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-lime-400"><UserCircle size={21} /></div>
             <div>
               <h2 className="text-lg font-extrabold text-slate-950">Owner profile</h2>
-              <p className="text-xs text-slate-500">Account identity used across FitLedger.</p>
+              <p className="text-xs text-slate-500">Account identity used across FitSaarthi.</p>
             </div>
           </div>
         </div>

@@ -68,22 +68,28 @@ const addMember = async (req, res) => {
     await member.populate('gymId', 'gymName');
     await createLog(req.gymId, member._id, 'member_joined', `${member.name} joined the gym.`);
 
-    let welcomeEmail = { delivered: false, channel: 'msg91', reason: 'not_attempted' };
-    try {
-      welcomeEmail = await sendMemberWelcomeEmail({
+    // Send the creation response first. MSG91 runs separately so a temporary
+    // email-provider failure never makes member creation fail in the UI.
+    res.status(201).json({
+      message: 'Member added successfully',
+      member
+    });
+
+    setImmediate(() => {
+      console.log('Sending welcome email for member:', member);
+      sendMemberWelcomeEmail({
         toEmail: member.email,
         memberName: member.name,
         gymName: member.gymId?.gymName
-      });
-    } catch (emailError) {
-      console.error(`Welcome email failed for member ${member._id}:`, emailError.message);
-      welcomeEmail = { delivered: false, channel: 'msg91', reason: 'delivery_failed' };
-    }
-
-    res.status(201).json({
-      message: 'Member added successfully',
-      member,
-      welcomeEmail
+      })
+        .then((result) => {
+          if (!result.delivered) {
+            console.warn(`Welcome email skipped for member ${member._id}: ${result.reason}`);
+          }
+        })
+        .catch((emailError) => {
+          console.error(`Welcome email failed for member ${member._id}:`, emailError.message);
+        });
     });
   } catch (error) {
     console.error('Add member error:', error);
