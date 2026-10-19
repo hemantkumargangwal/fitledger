@@ -263,10 +263,11 @@ const Memberships = () => {
           <button
             type="button"
             onClick={() => fetchMemberships({ quiet: true })}
-            className="btn-secondary"
+            className="btn-secondary !h-10 !w-10 !p-0"
+            aria-label="Refresh memberships"
+            title="Refresh memberships"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
           </button>
           <button type="button" onClick={openAddModal} className="btn-primary">
             <Plus className="h-4 w-4" />

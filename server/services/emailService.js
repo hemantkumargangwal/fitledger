@@ -8,6 +8,7 @@ const MSG91_EMAIL_DEFAULTS = Object.freeze({
   fromEmail: 'support@brainstacks.in',
   domain: 'mail.brainstacks.in'
 });
+const ENROLLMENT_TEMPLATE_ID = 'template_15_08_2026_23_08';
 
 const hasSmtpConfig = () => {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
@@ -201,8 +202,23 @@ const sendMemberWelcomeEmail = async ({ toEmail, memberName, gymName }) => {
   });
 };
 
+const sendEnrollmentInvitationEmail = async ({ toEmail, gymName, gymContact, enrollmentUrl }) => {
+  return sendMsg91TemplateEmail({
+    toEmail,
+    recipientName: 'New member',
+    companyName: gymName,
+    templateId: ENROLLMENT_TEMPLATE_ID,
+    variables: {
+      gym_name: gymName || 'FitSaarthi',
+      registration_form_link: enrollmentUrl,
+      gym_contact: gymContact || ''
+    }
+  });
+};
+
 module.exports = {
   sendPasswordResetOtp,
   sendMemberWelcomeEmail,
+  sendEnrollmentInvitationEmail,
   sendMsg91TemplateEmail
 };

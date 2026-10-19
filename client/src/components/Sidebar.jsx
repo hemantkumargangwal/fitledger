@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, ClipboardList, Dumbbell, FileText, Home, IndianRupee, LogOut, Salad, Settings, ShieldCheck, Tags, Users, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ClipboardList, Dumbbell, FileText, Home, IndianRupee, LogOut, Receipt, Salad, Settings, ShieldCheck, Tags, Users, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const navGroups = [
@@ -12,12 +12,14 @@ const navGroups = [
       { to: '/diet-plans', icon: Salad, label: 'Diet Plan' },
       { to: '/payments', icon: IndianRupee, label: 'Payments' },
       { to: '/enquiries', icon: ClipboardList, label: 'Enquiries' },
+      { to: '/leads', icon: ClipboardList, label: 'Lead CRM' },
     ],
   },
   {
     label: 'Business',
     items: [
       { to: '/reports', icon: FileText, label: 'Reports' },
+      { to: '/billing', icon: Receipt, label: 'GST Billing' },
       { to: '/settings', icon: Settings, label: 'Settings' },
     ],
   },
@@ -111,7 +113,7 @@ const Sidebar = ({
           ))}
         </nav>
 
-        {!collapsed && (
+        {/* {!collapsed && (
           <div className="mx-3 mb-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
             <div className="mb-3 flex items-center gap-2">
               <ShieldCheck size={15} className="text-lime-400" />
@@ -119,7 +121,7 @@ const Sidebar = ({
             </div>
             <p className="text-xs leading-5 text-slate-500">Your gym data stays private to this workspace.</p>
           </div>
-        )}
+        )} */}
 
         <div className="space-y-1 border-t border-white/10 p-3">
           <button

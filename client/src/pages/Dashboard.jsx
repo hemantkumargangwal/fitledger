@@ -170,10 +170,11 @@ const Dashboard = () => {
             setRefreshing(true);
             loadDashboard();
           }}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-lime-400 px-4 text-sm font-extrabold text-slate-950 transition hover:bg-lime-300"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-lime-400 text-slate-950 transition hover:bg-lime-300"
+          aria-label="Refresh dashboard"
+          title="Refresh dashboard"
         >
           <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
-          Refresh
         </button>
       </section>
 

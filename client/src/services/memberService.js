@@ -25,6 +25,36 @@ export const memberService = {
     return response.data;
   },
 
+  sendEnrollmentInvitation: async (email) => {
+    const response = await api.post('/members/enrollment-invitations', { email });
+    return response.data;
+  },
+
+  getEnrollmentDetails: async (token) => {
+    const response = await api.get('/enrollment', { params: { token } });
+    return response.data;
+  },
+
+  submitEnrollment: async (enrollmentData) => {
+    const response = await api.post('/enrollment', enrollmentData);
+    return response.data;
+  },
+
+  getPendingEnrollments: async () => {
+    const response = await api.get('/members/enrollments/pending');
+    return response.data;
+  },
+
+  approveEnrollment: async (id) => {
+    const response = await api.post(`/members/enrollments/${id}/approve`);
+    return response.data;
+  },
+
+  rejectEnrollment: async (id) => {
+    const response = await api.post(`/members/enrollments/${id}/reject`);
+    return response.data;
+  },
+
   // Update member
   updateMember: async (id, memberData) => {
     const response = await api.put(`/members/${id}`, memberData);

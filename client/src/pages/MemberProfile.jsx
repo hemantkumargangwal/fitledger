@@ -7,6 +7,7 @@ import { memberService } from '../services/memberService';
 import { membershipService } from '../services/membershipService';
 import { dietPlanService, workoutPlanService } from '../services/planService';
 import { formatCurrency } from '../utils/formatters';
+import MandatePanel from '../components/MandatePanel';
 
 const formatDate = (value) => {
   if (!value) return '-';
@@ -15,6 +16,22 @@ const formatDate = (value) => {
     month: 'short',
     year: 'numeric'
   }).format(new Date(value));
+};
+
+const calculateExpiryDate = (startDate, durationMonths) => {
+  const duration = Number(durationMonths);
+  if (!startDate || !Number.isInteger(duration) || duration < 1) return '';
+
+  const [year, month, day] = startDate.split('-').map(Number);
+  if (!year || !month || !day) return '';
+
+  const targetMonth = month - 1 + duration;
+  const targetYear = year + Math.floor(targetMonth / 12);
+  const normalizedMonth = targetMonth % 12;
+  const lastDay = new Date(Date.UTC(targetYear, normalizedMonth + 1, 0)).getUTCDate();
+  const expiry = new Date(Date.UTC(targetYear, normalizedMonth, Math.min(day, lastDay)));
+
+  return expiry.toISOString().slice(0, 10);
 };
 
 const emptyRenewal = {
@@ -128,7 +145,16 @@ const MemberProfile = () => {
   };
 
   const updateRenewal = (field, value) => {
-    setRenewalData((data) => ({ ...data, [field]: value }));
+    setRenewalData((data) => {
+      if (field !== 'startDate') return { ...data, [field]: value };
+
+      const selectedMembership = memberships.find((item) => item._id === data.membershipId);
+      return {
+        ...data,
+        startDate: value,
+        endDate: calculateExpiryDate(value, selectedMembership?.duration) || data.endDate,
+      };
+    });
   };
 
   const handleMembershipSelect = (membershipId) => {
@@ -138,6 +164,7 @@ const MemberProfile = () => {
       membershipId,
       membershipName: selected?.name || data.membershipName,
       membershipPrice: selected?.price ?? data.membershipPrice,
+      endDate: calculateExpiryDate(data.startDate, selected?.duration) || data.endDate,
     }));
   };
 
@@ -268,6 +295,8 @@ const MemberProfile = () => {
         </div>
       </section>
 
+      <MandatePanel memberId={member._id} />
+
       <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div className="border-b border-slate-100 p-6">
           <div className="flex items-center gap-2">
@@ -294,7 +323,7 @@ const MemberProfile = () => {
         </div>
       </section>
 
-      <ModalForm isOpen={showRenewal} onClose={() => setShowRenewal(false)} title="Membership Renewal" className="sm:max-w-5xl">
+      <ModalForm isOpen={showRenewal} onClose={() => setShowRenewal(false)} title="Membership Renewal" className="sm:!max-w-6xl">
         <form onSubmit={saveRenewal} className="space-y-5">
           <div className="grid gap-4 md:grid-cols-3">
             <Field label="Membership Name">

@@ -11,6 +11,9 @@ const dashboardRoutes = require('./routes/dashboard');
 const workoutPlanRoutes = require('./routes/workoutPlans');
 const dietPlanRoutes = require('./routes/dietPlans');
 const enquiryRoutes = require('./routes/enquiries');
+const leadRoutes = require('./routes/leads');
+const invoiceRoutes = require('./routes/invoices');
+const { getEnrollmentDetails, submitEnrollment } = require('./controllers/memberController');
 
 const DEFAULT_ORIGINS = [
   'http://localhost:5173',
@@ -66,6 +69,8 @@ const mountApiRoutes = (app, prefix) => {
   app.use(`${prefix}/workout-plans`, workoutPlanRoutes);
   app.use(`${prefix}/diet-plans`, dietPlanRoutes);
   app.use(`${prefix}/enquiries`, enquiryRoutes);
+  app.use(`${prefix}/leads`, leadRoutes);
+  app.use(`${prefix}/invoices`, invoiceRoutes);
 };
 
 const createApp = () => {
@@ -87,6 +92,13 @@ const createApp = () => {
   }));
   app.use(express.json({ limit: '2mb' }));
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+
+  // These endpoints are intentionally public: the signed, expiring enrollment
+  // token determines which gym receives the submitted member details.
+  app.get('/api/enrollment', getEnrollmentDetails);
+  app.post('/api/enrollment', submitEnrollment);
+  app.get('/api/v1/enrollment', getEnrollmentDetails);
+  app.post('/api/v1/enrollment', submitEnrollment);
 
   if (process.env.NODE_ENV !== 'test') app.use(requestLogger);
 

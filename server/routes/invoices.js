@@ -1,0 +1,2 @@
+const router = require('express').Router(); const auth = require('../middleware/auth'); const { ownerOnly } = require('../middleware/authorize'); const { asyncHandler } = require('../utils/errorHandler'); const c = require('../controllers/invoiceController');
+router.use(auth, ownerOnly); router.get('/', asyncHandler(c.getInvoices)); router.post('/', asyncHandler(c.createInvoice)); router.get('/:id/pdf', asyncHandler(c.getInvoicePdf)); router.post('/:id/share/whatsapp', asyncHandler(c.shareWhatsApp)); module.exports = router;

@@ -32,9 +32,17 @@ export const createIdempotencyKey = () => (
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
+    let gymId;
+    try {
+      gymId = JSON.parse(localStorage.getItem('user') || '{}').gymId;
+    } catch {
+      gymId = null;
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Tenant context is read at request time so switching workspaces never leaves a stale header.
+    if (gymId) config.headers['x-gym-id'] = gymId;
     config.headers['x-request-id'] = globalThis.crypto?.randomUUID?.() || Date.now().toString();
     return config;
   },
@@ -43,18 +51,11 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle common errors
+// Response interceptor deliberately leaves persisted credentials intact. The
+// auth provider treats a saved token as a valid session until the user logs out.
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    const isDesignPreview = import.meta.env.DEV && window.location.pathname.startsWith('/preview/');
-    if (error.response?.status === 401 && !window.location.pathname.startsWith('/login') && !isDesignPreview) {
-      // Handle unauthorized access
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 export default api;

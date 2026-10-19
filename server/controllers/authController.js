@@ -13,7 +13,7 @@ const RESET_MAX_ATTEMPTS = 5;
 const generateToken = (userId) => jwt.sign(
   { userId },
   process.env.JWT_SECRET,
-  { expiresIn: process.env.JWT_EXPIRES_IN || '12h' }
+  { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
 );
 
 const normalizePhone = (value = '') => value.replace(/\D/g, '');

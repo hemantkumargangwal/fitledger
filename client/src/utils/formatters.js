@@ -8,6 +8,11 @@ export const formatCurrency = (amount, currency = 'INR', locale = 'en-IN') => {
   }).format(amount);
 };
 
+export const formatINR = (amount) => `₹${Number(amount || 0).toLocaleString('en-IN', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})}`;
+
 // Date formatter
 export const formatDate = (date, options = {}) => {
   const defaultOptions = {

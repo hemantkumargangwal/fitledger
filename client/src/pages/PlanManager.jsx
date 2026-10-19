@@ -290,9 +290,8 @@ const PlanManager = ({ config }) => {
           <p className="mt-1 text-gray-600">{config.subtitle}</p>
         </div>
         <div className="flex gap-3">
-          <button type="button" onClick={() => fetchPlans({ quiet: true })} className="btn-secondary">
+          <button type="button" onClick={() => fetchPlans({ quiet: true })} className="btn-secondary !h-10 !w-10 !p-0" aria-label={`Refresh ${config.pluralLabel.toLowerCase()}`} title={`Refresh ${config.pluralLabel}`}>
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
           </button>
           <button type="button" onClick={openAddModal} className="btn-primary">
             <Plus className="h-4 w-4" />

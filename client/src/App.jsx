@@ -23,6 +23,9 @@ const Reports = lazy(() => import('./pages/Reports'));
 const Settings = lazy(() => import('./pages/Settings'));
 const MemberProfile = lazy(() => import('./pages/MemberProfile'));
 const Enquiries = lazy(() => import('./pages/Enquiries'));
+const EnrollmentForm = lazy(() => import('./pages/EnrollmentForm'));
+const LeadManagement = lazy(() => import('./pages/LeadManagement'));
+const Billing = lazy(() => import('./pages/Billing'));
 
 const AppFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-600" role="status">
@@ -42,6 +45,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/enroll" element={<EnrollmentForm />} />
           {import.meta.env.DEV && (
             <Route element={<DashboardLayout />}>
               <Route path="preview/dashboard" element={<Dashboard />} />
@@ -65,6 +69,8 @@ function App() {
             <Route path="reports" element={<Reports />} />
             <Route path="settings" element={<Settings />} />
             <Route path="enquiries" element={<Enquiries />} />
+            <Route path="leads" element={<LeadManagement />} />
+            <Route path="billing" element={<Billing />} />
           </Route>
           <Route path="/logout" element={<Navigate to="/login" replace />} />
           </Routes>

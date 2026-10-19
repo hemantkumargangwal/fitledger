@@ -1,8 +1,10 @@
 const Member = require('../models/Member');
+const Enrollment = require('../models/Enrollment');
 const Payment = require('../models/Payment');
 const Gym = require('../models/Gym');
 const { createLog } = require('../services/activityService');
-const { sendMemberWelcomeEmail } = require('../services/emailService');
+const jwt = require('jsonwebtoken');
+const { sendMemberWelcomeEmail, sendEnrollmentInvitationEmail } = require('../services/emailService');
 
 const parseDate = (value) => (value ? new Date(value) : undefined);
 const cleanString = (value) => String(value || '').trim();
@@ -45,6 +47,132 @@ const buildMemberCode = async (gymId) => {
     .toLowerCase() || 'fit';
   const count = await Member.countDocuments({ gymId });
   return `${prefix}${count + 1}`;
+};
+
+const getEnrollmentToken = (gymId) => jwt.sign(
+  { gymId: gymId.toString(), purpose: 'member-enrollment' },
+  process.env.JWT_SECRET,
+  { expiresIn: '7d' }
+);
+
+const getEnrollmentClaims = (token) => {
+  const claims = jwt.verify(token, process.env.JWT_SECRET);
+  if (claims.purpose !== 'member-enrollment' || !claims.gymId) {
+    throw new Error('Invalid enrollment link');
+  }
+  return claims;
+};
+
+const sendEnrollmentInvitation = async (req, res) => {
+  try {
+    const email = cleanString(req.body.email).toLowerCase();
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      return res.status(400).json({ message: 'Please enter a valid email address.' });
+    }
+
+    const gym = await Gym.findById(req.gymId).select('gymName phone').lean();
+    const clientUrl = cleanString(process.env.CLIENT_URL).split(',')[0] || 'http://localhost:5173';
+    const enrollmentUrl = `${clientUrl.replace(/\/$/, '')}/enroll?token=${encodeURIComponent(getEnrollmentToken(req.gymId))}`;
+    await sendEnrollmentInvitationEmail({
+      toEmail: email,
+      gymName: gym?.gymName,
+      gymContact: gym?.phone,
+      enrollmentUrl
+    });
+
+    res.json({ message: 'Enrollment form sent successfully.' });
+  } catch (error) {
+    console.error('Send enrollment invitation error:', error);
+    res.status(500).json({ message: 'Enrollment form could not be sent. Please check your email configuration.' });
+  }
+};
+
+const getEnrollmentDetails = async (req, res) => {
+  try {
+    const claims = getEnrollmentClaims(req.query.token);
+    const gym = await Gym.findById(claims.gymId).select('gymName').lean();
+    if (!gym) return res.status(404).json({ message: 'This enrollment link is no longer available.' });
+    res.json({ gymName: gym.gymName });
+  } catch (_error) {
+    res.status(400).json({ message: 'This enrollment link is invalid or has expired.' });
+  }
+};
+
+const submitEnrollment = async (req, res) => {
+  try {
+    const claims = getEnrollmentClaims(req.body.token);
+    const payload = getMemberPayload(req.body);
+    if (!payload.name || !payload.phone) {
+      return res.status(400).json({ message: 'Full name and mobile are required.' });
+    }
+
+    const enrollment = new Enrollment({
+      gymId: claims.gymId,
+      ...payload
+    });
+    await enrollment.save();
+    await createLog(claims.gymId, null, 'enrollment_submitted', `${enrollment.name} submitted an enrollment form.`);
+    res.status(201).json({ message: 'Your enrollment details have been submitted for approval.' });
+  } catch (error) {
+    console.error('Submit enrollment error:', error);
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return res.status(400).json({ message: 'This enrollment link is invalid or has expired.' });
+    }
+    res.status(500).json({ message: 'Enrollment could not be submitted. Please try again.' });
+  }
+};
+
+const getPendingEnrollments = async (req, res) => {
+  try {
+    const enrollments = await Enrollment.find({ gymId: req.gymId, status: 'pending' }).sort({ createdAt: -1 });
+    res.json({ enrollments });
+  } catch (error) {
+    console.error('Get pending enrollments error:', error);
+    res.status(500).json({ message: 'Pending enrollments could not be loaded.' });
+  }
+};
+
+const approveEnrollment = async (req, res) => {
+  try {
+    const enrollment = await Enrollment.findOne({ _id: req.params.id, gymId: req.gymId, status: 'pending' });
+    if (!enrollment) return res.status(404).json({ message: 'Pending enrollment not found.' });
+
+    const member = new Member({
+      gymId: req.gymId,
+      memberCode: await buildMemberCode(req.gymId),
+      name: enrollment.name,
+      phone: enrollment.phone,
+      gender: enrollment.gender,
+      email: enrollment.email,
+      dateOfBirth: enrollment.dateOfBirth,
+      address: enrollment.address,
+      emergencyContactNumber: enrollment.emergencyContactNumber
+    });
+    await member.save();
+    enrollment.status = 'approved';
+    enrollment.reviewedAt = new Date();
+    await enrollment.save();
+    await createLog(req.gymId, member._id, 'member_joined', `${member.name}'s enrollment was approved.`);
+    res.status(201).json({ message: 'Enrollment approved and member added.', member });
+  } catch (error) {
+    console.error('Approve enrollment error:', error);
+    res.status(500).json({ message: 'Enrollment could not be approved.' });
+  }
+};
+
+const rejectEnrollment = async (req, res) => {
+  try {
+    const enrollment = await Enrollment.findOneAndUpdate(
+      { _id: req.params.id, gymId: req.gymId, status: 'pending' },
+      { status: 'rejected', reviewedAt: new Date() },
+      { new: true }
+    );
+    if (!enrollment) return res.status(404).json({ message: 'Pending enrollment not found.' });
+    res.json({ message: 'Enrollment rejected.' });
+  } catch (error) {
+    console.error('Reject enrollment error:', error);
+    res.status(500).json({ message: 'Enrollment could not be rejected.' });
+  }
 };
 
 const addMember = async (req, res) => {
@@ -433,5 +561,11 @@ module.exports = {
   deleteMember,
   bulkUpdateMembers,
   bulkDeleteMembers,
-  syncMemberStatus
+  syncMemberStatus,
+  sendEnrollmentInvitation,
+  getEnrollmentDetails,
+  submitEnrollment,
+  getPendingEnrollments,
+  approveEnrollment,
+  rejectEnrollment
 };

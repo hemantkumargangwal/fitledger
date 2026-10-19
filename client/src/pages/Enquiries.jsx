@@ -155,7 +155,7 @@ const Enquiries = () => {
     <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
       <div><h1 className="text-3xl font-bold tracking-tight text-gray-900">Enquiries</h1><p className="mt-1 text-gray-600">Track prospects, follow-ups, and conversions.</p></div>
       <div className="flex flex-wrap gap-3">
-        <button type="button" onClick={() => fetchEnquiries({ quiet: true })} className="btn-secondary"><RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />Refresh</button>
+        <button type="button" onClick={() => fetchEnquiries({ quiet: true })} className="btn-secondary !h-10 !w-10 !p-0" aria-label="Refresh enquiries" title="Refresh enquiries"><RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /></button>
         <button type="button" onClick={() => { setEditingEnquiry(null); setFormData(makeInitialForm()); setFormErrors({}); setShowModal(true); }} className="btn-primary"><Plus className="h-4 w-4" />Add New Enquiry</button>
       </div>
     </div>
