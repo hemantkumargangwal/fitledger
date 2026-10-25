@@ -326,7 +326,7 @@ const PlanManager = ({ config }) => {
         isOpen={showModal}
         onClose={closeModal}
         title={editingPlan ? `Update ${config.singularLabel}` : `Add ${config.singularLabel}`}
-        className="sm:max-w-5xl"
+        className={config.route === 'workout-plans' ? 'sm:!max-w-6xl' : 'sm:max-w-5xl'}
       >
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">

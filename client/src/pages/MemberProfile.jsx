@@ -51,6 +51,7 @@ const emptyRenewal = {
   salesManager: '',
   note: '',
   invoiceSendEmail: false,
+  invoiceSendChannel: 'email',
   amountPaid: '',
   mode: 'cash',
   paymentDueDate: '',
@@ -137,6 +138,7 @@ const MemberProfile = () => {
       salesManager: assignment?.salesManager || '',
       note: assignment?.note || '',
       invoiceSendEmail: Boolean(assignment?.invoiceSendEmail),
+      invoiceSendChannel: assignment?.invoiceSendChannel || 'email',
       amountPaid: assignment?.amountPaid ?? '',
       mode: assignment?.mode || 'cash',
       paymentDueDate: assignment?.paymentDueDate ? assignment.paymentDueDate.slice(0, 10) : '',
@@ -269,7 +271,7 @@ const MemberProfile = () => {
               <Info label="Trainer Slot" value={assignment.trainerSlot || '-'} />
               <Info label="Total Payable" value={formatCurrency(assignment.totalAmountPayable || 0)} />
               <Info label="Amount Paid" value={formatCurrency(assignment.amountPaid || 0)} />
-              <Info label="Payment Due Date" value={formatDate(assignment.paymentDueDate)} />
+              <Info label="Fee Due Date & Amount" value={`${formatDate(assignment.paymentDueDate)} · ${formatCurrency(Math.max(Number(assignment.totalAmountPayable || 0) - Number(assignment.amountPaid || 0), 0))}`} />
             </dl>
           ) : (
             <p className="mt-3 text-sm text-slate-500">No membership assigned yet.</p>
@@ -389,10 +391,14 @@ const MemberProfile = () => {
             <Field label="Payment Due Date">
               <input className="input" type="date" value={renewalData.paymentDueDate} onChange={(e) => updateRenewal('paymentDueDate', e.target.value)} />
             </Field>
-            <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <input type="checkbox" checked={renewalData.invoiceSendEmail} onChange={(e) => updateRenewal('invoiceSendEmail', e.target.checked)} className="h-5 w-5 rounded border-slate-300 text-lime-600 focus:ring-lime-500" />
-              <span className="text-sm font-bold text-slate-700">Invoice Send Email</span>
-            </label>
+            <Field label="Invoice Send">
+              <select className="input" value={renewalData.invoiceSendChannel} onChange={(e) => updateRenewal('invoiceSendChannel', e.target.value)}>
+                <option value="sms">SMS</option>
+                <option value="email">Email</option>
+                <option value="whatsapp">WhatsApp</option>
+              </select>
+              <p className="mt-1 text-xs text-slate-500">This saves the preferred channel. Invoice delivery is not configured for membership renewals yet.</p>
+            </Field>
             <div className="md:col-span-3">
               <Field label="Note">
                 <textarea className="input min-h-24 resize-y" value={renewalData.note} onChange={(e) => updateRenewal('note', e.target.value)} />

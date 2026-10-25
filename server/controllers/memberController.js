@@ -447,6 +447,9 @@ const assignMembership = async (req, res) => {
       salesManager: cleanString(req.body.salesManager),
       note: cleanString(req.body.note),
       invoiceSendEmail: Boolean(req.body.invoiceSendEmail),
+      invoiceSendChannel: ['sms', 'email', 'whatsapp'].includes(req.body.invoiceSendChannel)
+        ? req.body.invoiceSendChannel
+        : 'email',
       amountPaid,
       mode: paymentMode,
       paymentDueDate: parseDate(req.body.paymentDueDate),

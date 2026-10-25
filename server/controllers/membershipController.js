@@ -4,36 +4,38 @@ const Member = require('../models/Member');
 const buildMembershipPayload = (body) => {
   const name = String(body.name || '').trim();
   const price = Number(body.price);
+  const originalPrice = body.originalPrice === undefined || body.originalPrice === '' ? price : Number(body.originalPrice);
   const duration = Number(body.duration);
   const ptIncluded = Boolean(body.ptIncluded);
 
   if (!name) return { error: 'Membership name is required' };
   if (!Number.isFinite(price) || price < 0) return { error: 'Membership price must be 0 or more' };
+  if (!Number.isFinite(originalPrice) || originalPrice < price) return { error: 'Original price must be greater than or equal to the final price' };
   if (!Number.isInteger(duration) || duration < 1) return { error: 'Duration must be at least 1 month' };
 
-  return { data: { name, price, duration, ptIncluded } };
+  return { data: { name, price, originalPrice, duration, ptIncluded } };
 };
 
-const getPopularityByDuration = async (gymId) => {
+const getPopularityByMembershipId = async (gymId) => {
   const popularity = await Member.aggregate([
-    { $match: { gymId } },
-    { $group: { _id: '$planDuration', count: { $sum: 1 } } }
+    { $match: { gymId, 'membershipAssignment.membershipId': { $exists: true } } },
+    { $group: { _id: '$membershipAssignment.membershipId', count: { $sum: 1 } } }
   ]);
 
-  return new Map(popularity.map((item) => [Number(item._id), item.count]));
+  return new Map(popularity.map((item) => [String(item._id), item.count]));
 };
 
 const getMemberships = async (req, res) => {
   try {
-    const [memberships, popularityByDuration] = await Promise.all([
+    const [memberships, popularityByMembershipId] = await Promise.all([
       Membership.find({ gymId: req.gymId }).sort({ duration: 1, price: 1, name: 1 }).lean(),
-      getPopularityByDuration(req.gymId)
+      getPopularityByMembershipId(req.gymId)
     ]);
 
     res.json({
       memberships: memberships.map((membership) => ({
         ...membership,
-        popularity: popularityByDuration.get(Number(membership.duration)) || 0
+        popularity: popularityByMembershipId.get(String(membership._id)) || 0
       }))
     });
   } catch (error) {
@@ -103,6 +105,7 @@ const deleteMembership = async (req, res) => {
 };
 
 module.exports = {
+  buildMembershipPayload,
   getMemberships,
   createMembership,
   updateMembership,

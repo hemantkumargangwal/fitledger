@@ -48,8 +48,16 @@ const Register = () => {
       setError('Passwords do not match.');
       return;
     }
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters.');
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (!/[A-Za-z]/.test(formData.password)) {
+      setError('Password must include at least one letter.');
+      return;
+    }
+    if (!/\d/.test(formData.password)) {
+      setError('Password must include at least one number.');
       return;
     }
 
@@ -186,6 +194,8 @@ const Register = () => {
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   required
+                  minLength="8"
+                  aria-describedby="password-requirements"
                   value={formData.password}
                   onChange={handleChange}
                   className="input pr-10"
@@ -203,6 +213,9 @@ const Register = () => {
                   )}
                 </button>
               </div>
+              <p id="password-requirements" className="mt-1.5 text-xs text-gray-500">
+                Use at least 8 characters, including a letter and a number.
+              </p>
             </div>
 
             <div>

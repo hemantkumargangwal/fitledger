@@ -30,6 +30,7 @@ const membershipAssignmentSchema = new mongoose.Schema({
   salesManager: { type: String, trim: true },
   note: { type: String, trim: true },
   invoiceSendEmail: { type: Boolean, default: false },
+  invoiceSendChannel: { type: String, enum: ['sms', 'email', 'whatsapp'], default: 'email' },
   amountPaid: { type: Number, default: 0 },
   mode: { type: String, enum: ['cash', 'upi', 'card'], default: 'cash' },
   paymentDueDate: { type: Date },

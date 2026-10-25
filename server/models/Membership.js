@@ -16,6 +16,10 @@ const membershipSchema = new mongoose.Schema({
     required: true,
     min: 0
   },
+  originalPrice: {
+    type: Number,
+    min: 0
+  },
   duration: {
     type: Number,
     required: true,

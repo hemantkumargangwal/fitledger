@@ -7,11 +7,18 @@ import Spinner from '../components/Spinner';
 import { membershipService } from '../services/membershipService';
 import { formatCurrency } from '../utils/formatters';
 
-const initialForm = {
+const createInitialForm = () => ({
   name: '',
   price: '',
+  originalPrice: '',
   duration: '',
   ptIncluded: false,
+});
+
+const getDiscountPercent = (originalPrice, price) => {
+  const original = Number(originalPrice);
+  const discounted = Number(price);
+  return original > discounted && original > 0 ? Math.round(((original - discounted) / original) * 100) : 0;
 };
 
 const Memberships = () => {
@@ -20,7 +27,7 @@ const Memberships = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingMembership, setEditingMembership] = useState(null);
-  const [formData, setFormData] = useState(initialForm);
+  const [formData, setFormData] = useState(createInitialForm);
   const [formErrors, setFormErrors] = useState({});
   const [submitLoading, setSubmitLoading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -61,7 +68,7 @@ const Memberships = () => {
 
   const resetForm = () => {
     setEditingMembership(null);
-    setFormData(initialForm);
+    setFormData(createInitialForm());
     setFormErrors({});
   };
 
@@ -75,6 +82,7 @@ const Memberships = () => {
     setFormData({
       name: membership.name || '',
       price: membership.price ?? '',
+      originalPrice: membership.originalPrice ?? membership.price ?? '',
       duration: membership.duration ?? '',
       ptIncluded: Boolean(membership.ptIncluded),
     });
@@ -90,10 +98,12 @@ const Memberships = () => {
   const validateForm = () => {
     const errors = {};
     const price = Number(formData.price);
+    const originalPrice = formData.originalPrice === '' ? price : Number(formData.originalPrice);
     const duration = Number(formData.duration);
 
     if (!formData.name.trim()) errors.name = 'Membership name is required';
     if (formData.price === '' || !Number.isFinite(price) || price < 0) errors.price = 'Price must be 0 or more';
+    if (!Number.isFinite(originalPrice) || originalPrice < price) errors.originalPrice = 'Original price must be greater than or equal to the final price';
     if (!Number.isInteger(duration) || duration < 1) errors.duration = 'Duration must be at least 1 month';
 
     setFormErrors(errors);
@@ -108,6 +118,7 @@ const Memberships = () => {
     const payload = {
       name: formData.name.trim(),
       price: Number(formData.price),
+      originalPrice: formData.originalPrice === '' ? Number(formData.price) : Number(formData.originalPrice),
       duration: Number(formData.duration),
       ptIncluded: Boolean(formData.ptIncluded),
     };
@@ -212,7 +223,10 @@ const Memberships = () => {
     {
       key: 'price',
       label: 'Price',
-      render: (membership) => <span className="font-extrabold text-slate-950">{formatCurrency(membership.price || 0)}</span>
+      render: (membership) => {
+        const discountPercent = getDiscountPercent(membership.originalPrice, membership.price);
+        return <div><span className="font-extrabold text-slate-950">{formatCurrency(membership.price || 0)}</span>{discountPercent > 0 && <p className="mt-0.5 text-xs font-semibold text-emerald-700"><span className="mr-1 text-slate-400 line-through">{formatCurrency(membership.originalPrice)}</span>{discountPercent}% off</p>}</div>;
+      }
     },
     {
       key: 'action',
@@ -271,7 +285,7 @@ const Memberships = () => {
           </button>
           <button type="button" onClick={openAddModal} className="btn-primary">
             <Plus className="h-4 w-4" />
-            ship
+            Add Membership
           </button>
         </div>
       </div>
@@ -321,8 +335,23 @@ const Memberships = () => {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
+              <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="membership-original-price">
+                Original Price
+              </label>
+              <input
+                id="membership-original-price"
+                type="number"
+                min="0"
+                value={formData.originalPrice}
+                onChange={(event) => setFormData((data) => ({ ...data, originalPrice: event.target.value }))}
+                className={`input ${formErrors.originalPrice ? 'border-red-300 focus:ring-red-500' : ''}`}
+                placeholder="799"
+              />
+              {formErrors.originalPrice && <p className="mt-1 text-xs font-medium text-red-600">{formErrors.originalPrice}</p>}
+            </div>
+            <div>
               <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="membership-price">
-                Membership Price
+                Final Price
               </label>
               <input
                 id="membership-price"
@@ -335,7 +364,9 @@ const Memberships = () => {
               />
               {formErrors.price && <p className="mt-1 text-xs font-medium text-red-600">{formErrors.price}</p>}
             </div>
+          </div>
 
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="membership-duration">
                 Duration

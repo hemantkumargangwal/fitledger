@@ -148,8 +148,9 @@ const LandingPage = () => {
   const pricing = [
     {
       name: 'Starter',
-      price: '199',
-      yearlyPrice: '1,990',
+      price: 199,
+      originalPrice: 499,
+      yearlyPrice: 1990,
       description: 'Best for gyms with up to 100 active members',
       features: [
         'Up to 100 members',
@@ -163,8 +164,9 @@ const LandingPage = () => {
     },
     {
       name: 'Growth',
-      price: '299',
-      yearlyPrice: '2,990',
+      price: 299,
+      originalPrice: 799,
+      yearlyPrice: 2990,
       description: 'Perfect for growing gyms managing up to 200 members',
       features: [
         'Up to 200 members',
@@ -178,8 +180,9 @@ const LandingPage = () => {
     },
     {
       name: 'Enterprise',
-      price: '599',
-      yearlyPrice: '5,990',
+      price: 599,
+      originalPrice: 1499,
+      yearlyPrice: 5990,
       description: 'For high-volume gyms that need unlimited member management',
       features: [
         'Unlimited members',
@@ -614,7 +617,12 @@ const LandingPage = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {pricing.map((plan, index) => (
+            {pricing.map((plan, index) => {
+              const currentPrice = billingCycle === 'yearly' ? plan.yearlyPrice : plan.price;
+              const originalPrice = billingCycle === 'yearly' ? plan.originalPrice * 10 : plan.originalPrice;
+              const discountPercent = Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
+
+              return (
               <div key={index} className={`relative ${
                 plan.highlighted 
                   ? 'card-gradient scale-105 shadow-soft-lg' 
@@ -633,16 +641,20 @@ const LandingPage = () => {
                   <p className="text-gray-600 mb-6">{plan.description}</p>
                   
                   <div className="mb-6">
-                    <span className="text-4xl font-bold text-gray-900">₹{billingCycle === 'yearly' ? plan.yearlyPrice : plan.price}</span>
+                    <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+                      <span className="text-lg font-semibold text-gray-400 line-through">₹{originalPrice.toLocaleString('en-IN')}</span>
+                      <span className="rounded-full bg-success-50 px-2.5 py-1 text-xs font-bold text-success-700">{discountPercent}% off</span>
+                    </div>
+                    <span className="mt-1 inline-block text-4xl font-bold text-gray-900">₹{currentPrice.toLocaleString('en-IN')}</span>
                     <span className="text-gray-600">/{billingCycle === 'yearly' ? 'year' : 'month'}</span>
                     <p className="mt-2 text-sm font-medium text-gray-500">
                       {billingCycle === 'yearly'
-                        ? `₹${Math.round(Number(plan.price) * 10 / 12)}/month, billed yearly`
+                        ? `₹${Math.round(plan.yearlyPrice / 12).toLocaleString('en-IN')}/month, billed yearly`
                         : 'Billed monthly'}
                     </p>
                     {billingCycle === 'yearly' && (
                       <p className="mt-1 text-sm font-semibold text-success-600">
-                        Save ₹{Number(plan.price) * 2} every year
+                        Save ₹{(originalPrice - currentPrice).toLocaleString('en-IN')} every year
                       </p>
                     )}
                   </div>
@@ -668,7 +680,8 @@ const LandingPage = () => {
                   </Link>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>

@@ -24,6 +24,7 @@ const {
 } = require('../controllers/memberController');
 const { getMemberActivity } = require('../controllers/activityController');
 const { getMandate, setupMandate, pauseMandate, resumeMandate } = require('../controllers/mandateController');
+const { asyncHandler } = require('../utils/errorHandler');
 
 router.use(auth, ownerOnly);
 
@@ -40,10 +41,10 @@ router.get('/enrollments/pending', getPendingEnrollments);
 router.post('/enrollments/:id/approve', approveEnrollment);
 router.post('/enrollments/:id/reject', rejectEnrollment);
 router.get('/:id/activity', getMemberActivity);
-router.get('/:id/mandate', getMandate);
-router.post('/:id/mandate/setup', setupMandate);
-router.post('/:id/mandate/pause', pauseMandate);
-router.post('/:id/mandate/resume', resumeMandate);
+router.get('/:id/mandate', asyncHandler(getMandate));
+router.post('/:id/mandate/setup', asyncHandler(setupMandate));
+router.post('/:id/mandate/pause', asyncHandler(pauseMandate));
+router.post('/:id/mandate/resume', asyncHandler(resumeMandate));
 router.get('/:id', getMember);
 router.put('/:id', updateMember);
 router.post('/:id/assign-membership', assignMembership);
