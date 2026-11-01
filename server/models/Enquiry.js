@@ -13,6 +13,7 @@ const enquirySchema = new mongoose.Schema({
   suitableTimeSlot: { type: String, trim: true },
   nextFollowUp: { type: Date },
   convertibilityNote: { type: String, trim: true },
+  creationKey: { type: String, trim: true },
   status: {
     type: String,
     enum: ['open', 'in-progress', 'closed', 'converted'],
@@ -23,5 +24,6 @@ const enquirySchema = new mongoose.Schema({
 });
 
 enquirySchema.index({ gymId: 1, createdAt: -1 });
+enquirySchema.index({ gymId: 1, creationKey: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Enquiry', enquirySchema);

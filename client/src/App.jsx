@@ -24,7 +24,6 @@ const Settings = lazy(() => import('./pages/Settings'));
 const MemberProfile = lazy(() => import('./pages/MemberProfile'));
 const Enquiries = lazy(() => import('./pages/Enquiries'));
 const EnrollmentForm = lazy(() => import('./pages/EnrollmentForm'));
-const LeadManagement = lazy(() => import('./pages/LeadManagement'));
 const Billing = lazy(() => import('./pages/Billing'));
 
 const AppFallback = () => (
@@ -69,7 +68,7 @@ function App() {
             <Route path="reports" element={<Reports />} />
             <Route path="settings" element={<Settings />} />
             <Route path="enquiries" element={<Enquiries />} />
-            <Route path="leads" element={<LeadManagement />} />
+            <Route path="leads" element={<Navigate to="/enquiries" replace />} />
             <Route path="billing" element={<Billing />} />
           </Route>
           <Route path="/logout" element={<Navigate to="/login" replace />} />

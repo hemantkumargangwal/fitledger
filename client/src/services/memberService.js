@@ -109,4 +109,9 @@ export const memberService = {
     });
     return response.data;
   },
+
+  sendBulkMessage: async ({ channel, audience, memberIds, message }) => {
+    const response = await api.post('/members/bulk-message', { channel, audience, memberIds, message });
+    return response.data;
+  },
 };

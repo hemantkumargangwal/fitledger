@@ -1,8 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Building2 } from "lucide-react";
- import { Lock } from "lucide-react";
-import { ShieldCheck } from "lucide-react";
-import { UserCircle } from "lucide-react";
+import { Building2, Eye, EyeOff, Lock, Save, ShieldCheck, UserCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getApiError } from '../services/api';
@@ -13,7 +10,7 @@ const inputClass = 'min-h-11 w-full rounded-xl border border-slate-300 bg-white 
 const Settings = () => {
   const { user, updateUser, refreshProfile, logout } = useAuth();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState({ name: '', email: '', gymName: '', ownerName: '', phone: '', address: '' });
+  const [profile, setProfile] = useState({ name: '', email: '', gymName: '', ownerName: '', phone: '', address: '', logoUrl: '', website: '', emailSignature: '' });
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
@@ -30,6 +27,9 @@ const Settings = () => {
       ownerName: user.ownerName || user.name || '',
       phone: user.phone || '',
       address: user.address || '',
+      logoUrl: user.logoUrl || '',
+      website: user.website || '',
+      emailSignature: user.emailSignature || '',
     });
   }, [user]);
 
@@ -101,12 +101,15 @@ const Settings = () => {
           </div>
 
           <div className="border-t border-slate-100 pt-6">
-            <div className="mb-5 flex items-center gap-2"><Building2 size={18} className="text-lime-700" /><h3 className="font-extrabold text-slate-900">Gym information</h3></div>
+            <div className="mb-5 flex items-center gap-2"><Building2 size={18} className="text-lime-700" /><div><h3 className="font-extrabold text-slate-900">Gym information</h3><p className="text-xs font-normal text-slate-500">These verified details are used in member and enquiry emails.</p></div></div>
             <div className="grid gap-5 md:grid-cols-2">
               <label className="text-sm font-bold text-slate-700">Gym name<input name="gymName" value={profile.gymName} onChange={handleProfileChange} className={`${inputClass} mt-2`} required /></label>
               <label className="text-sm font-bold text-slate-700">Owner name<input name="ownerName" value={profile.ownerName} onChange={handleProfileChange} className={`${inputClass} mt-2`} required /></label>
               <label className="text-sm font-bold text-slate-700">Phone<input name="phone" value={profile.phone} onChange={handleProfileChange} className={`${inputClass} mt-2`} placeholder="+91 98765 43210" /></label>
               <label className="text-sm font-bold text-slate-700">Address<input name="address" value={profile.address} onChange={handleProfileChange} className={`${inputClass} mt-2`} placeholder="Gym address" /></label>
+              <label className="text-sm font-bold text-slate-700">Gym logo URL<input name="logoUrl" type="url" value={profile.logoUrl} onChange={handleProfileChange} className={`${inputClass} mt-2`} placeholder="https://example.com/logo.png" /><span className="mt-1 block text-xs font-normal text-slate-500">A public HTTPS image URL shown in email templates.</span></label>
+              <label className="text-sm font-bold text-slate-700">Website URL<input name="website" type="url" value={profile.website} onChange={handleProfileChange} className={`${inputClass} mt-2`} placeholder="https://yourgym.com" /></label>
+              <label className="text-sm font-bold text-slate-700 md:col-span-2">Email sign-off<textarea name="emailSignature" value={profile.emailSignature} onChange={handleProfileChange} maxLength={500} className={`${inputClass} mt-2 min-h-24 resize-y py-3`} placeholder="Example: Thank you for choosing FitSaarthi Gym." /><span className="mt-1 block text-xs font-normal text-slate-500">Optional; available as the gym_email_signature template variable.</span></label>
             </div>
           </div>
 

@@ -63,6 +63,12 @@ const Members = () => {
   const [shareEmail, setShareEmail] = useState('');
   const [shareError, setShareError] = useState('');
   const [shareLoading, setShareLoading] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [messageChannel, setMessageChannel] = useState('email');
+  const [messageAudience, setMessageAudience] = useState('all');
+  const [messageBody, setMessageBody] = useState('');
+  const [messageError, setMessageError] = useState('');
+  const [messageLoading, setMessageLoading] = useState(false);
 
   const fetchMembers = async ({ quiet = false } = {}) => {
     try {
@@ -261,6 +267,42 @@ const Members = () => {
     setShowShareModal(true);
   };
 
+  const openMessageModal = () => {
+    setMessageChannel('email');
+    setMessageAudience(selectedMemberIds.length ? 'selected' : 'all');
+    setMessageBody('');
+    setMessageError('');
+    setShowMessageModal(true);
+  };
+
+  const sendBulkMessage = async (event) => {
+    event.preventDefault();
+    if (!messageBody.trim()) {
+      setMessageError('Write a message before sending.');
+      return;
+    }
+    if (messageAudience === 'selected' && !selectedMemberIds.length) {
+      setMessageError('Select at least one member, or choose all members.');
+      return;
+    }
+    setMessageLoading(true);
+    setMessageError('');
+    try {
+      const response = await memberService.sendBulkMessage({
+        channel: messageChannel,
+        audience: messageAudience,
+        memberIds: messageAudience === 'selected' ? selectedMemberIds : [],
+        message: messageBody.trim(),
+      });
+      setShowMessageModal(false);
+      window.toast?.({ type: 'success', title: 'Message queued', message: response.message, duration: 4000 });
+    } catch (error) {
+      setMessageError(error.response?.data?.message || 'The message could not be sent.');
+    } finally {
+      setMessageLoading(false);
+    }
+  };
+
   const shareEnrollmentForm = async (event) => {
     event.preventDefault();
     if (!/^\S+@\S+\.\S+$/.test(shareEmail.trim())) {
@@ -387,6 +429,7 @@ const Members = () => {
           <option value="inactive">Inactive</option>
           <option value="expired">Expired</option>
         </select>
+        <button type="button" onClick={openMessageModal} className="btn-secondary whitespace-nowrap"><Send className="h-4 w-4" />Send message{selectedMemberIds.length ? ` (${selectedMemberIds.length})` : ''}</button>
         {selectedMemberIds.length > 0 && <button type="button" onClick={() => openDeleteDialog(members.filter((member) => selectedMemberIds.includes(member._id)))} className="btn-danger whitespace-nowrap"><Trash2 className="h-4 w-4" />Delete selected ({selectedMemberIds.length})</button>}
       </div>
 
@@ -551,6 +594,47 @@ const Members = () => {
             </div>
           )}
         </div>
+      </ModalForm>
+
+      <ModalForm
+        isOpen={showMessageModal}
+        onClose={() => !messageLoading && setShowMessageModal(false)}
+        title="Send message to members"
+      >
+        <form onSubmit={sendBulkMessage} className="space-y-5">
+          <p className="text-sm text-slate-600">Send one approved template message to all members or only the members you select.</p>
+          <fieldset>
+            <legend className="mb-2 text-sm font-semibold text-slate-700">Recipients</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${messageAudience === 'all' ? 'border-lime-400 bg-lime-50' : 'border-slate-200'}`}>
+                <input type="radio" name="messageAudience" value="all" checked={messageAudience === 'all'} onChange={() => setMessageAudience('all')} />
+                <span><span className="block font-bold text-slate-900">All members</span><span className="text-xs text-slate-500">Every member in this gym</span></span>
+              </label>
+              <label className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${messageAudience === 'selected' ? 'border-lime-400 bg-lime-50' : 'border-slate-200'} ${selectedMemberIds.length ? '' : 'cursor-not-allowed opacity-50'}`}>
+                <input type="radio" name="messageAudience" value="selected" checked={messageAudience === 'selected'} onChange={() => setMessageAudience('selected')} disabled={!selectedMemberIds.length} />
+                <span><span className="block font-bold text-slate-900">Selected members</span><span className="text-xs text-slate-500">{selectedMemberIds.length ? `${selectedMemberIds.length} selected` : 'Select members from the list first'}</span></span>
+              </label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend className="mb-2 text-sm font-semibold text-slate-700">Channel</legend>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                ['email', 'Email', Mail],
+                ['whatsapp', 'WhatsApp', MessageCircle],
+                ['sms', 'SMS', Smartphone],
+              ].map(([id, label, Icon]) => <button key={id} type="button" onClick={() => setMessageChannel(id)} className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-bold ${messageChannel === id ? 'border-lime-400 bg-lime-50 text-lime-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}><Icon className="h-4 w-4" />{label}</button>)}
+            </div>
+          </fieldset>
+          <Field label="Message" error={messageError}>
+            <textarea className="input min-h-28 resize-y" maxLength={1000} value={messageBody} onChange={(event) => { setMessageBody(event.target.value); setMessageError(''); }} placeholder="Write the message approved in your channel template" autoFocus />
+          </Field>
+          <p className="text-xs text-slate-500">SMS and WhatsApp use the configured MSG91 templates. Members without a compatible email address or phone number are skipped.</p>
+          <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
+            <button type="button" onClick={() => setShowMessageModal(false)} className="btn-secondary" disabled={messageLoading}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={messageLoading}>{messageLoading ? <Spinner size="sm" /> : <Send className="h-4 w-4" />}Send {messageChannel === 'whatsapp' ? 'WhatsApp' : messageChannel.toUpperCase()}</button>
+          </div>
+        </form>
       </ModalForm>
 
       <ConfirmDialog

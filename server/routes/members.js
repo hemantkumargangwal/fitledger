@@ -14,6 +14,7 @@ const {
   deleteMember,
   bulkUpdateMembers,
   bulkDeleteMembers,
+  sendBulkMemberMessage,
   syncMemberStatus,
   sendEnrollmentInvitation,
   getEnrollmentDetails,
@@ -35,6 +36,7 @@ router.get('/search', searchMembers);
 router.get('/expiring', getExpiringMembers);
 router.put('/bulk', bulkUpdateMembers);
 router.delete('/bulk', bulkDeleteMembers);
+router.post('/bulk-message', sendBulkMemberMessage);
 router.post('/sync-status', syncMemberStatus);
 router.post('/enrollment-invitations', sendEnrollmentInvitation);
 router.get('/enrollments/pending', getPendingEnrollments);

@@ -11,6 +11,11 @@ const paymentSchema = new mongoose.Schema({
     ref: 'Member',
     required: true
   },
+  membershipPeriodKey: {
+    type: String,
+    trim: true,
+    index: true
+  },
   amount: {
     type: Number,
     required: true,

@@ -3,12 +3,10 @@ const https = require('https');
 
 let cachedTransporter = null;
 const MSG91_EMAIL_DEFAULTS = Object.freeze({
-  welcomeTemplateId: 'template_03_08_2026_19_08_2',
-  fromName: 'Brainstacks Support',
-  fromEmail: 'support@brainstacks.in',
-  domain: 'mail.brainstacks.in'
+  fromName: 'FitSaarthi',
+  fromEmail: '',
+  domain: ''
 });
-const ENROLLMENT_TEMPLATE_ID = 'template_15_08_2026_23_08';
 
 const hasSmtpConfig = () => {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
@@ -84,31 +82,20 @@ const sendPasswordResetOtp = async ({ toEmail, ownerName, otp }) => {
 };
 
 const getMsg91EmailConfig = () => {
-
-  console.log('MSG91_AUTH_KEY:', process.env.MSG91_AUTH_KEY);
   if (!process.env.MSG91_AUTH_KEY) {
     return null;
   }
-  const data = {
-    authKey: process.env.MSG91_AUTH_KEY,
-    fromName: MSG91_EMAIL_DEFAULTS.fromName,
-    fromEmail: MSG91_EMAIL_DEFAULTS.fromEmail,
-    domain: MSG91_EMAIL_DEFAULTS.domain,
-    templateId: process.env.MSG91_EMAIL_TEMPLATE_ID || 'global_otp'
-  };
-  console.log('MSG91 email config:', data);
-  return data;
   return {
     authKey: process.env.MSG91_AUTH_KEY,
-    fromName: MSG91_EMAIL_DEFAULTS.fromName,
-    fromEmail: MSG91_EMAIL_DEFAULTS.fromEmail,
-    domain: MSG91_EMAIL_DEFAULTS.domain,
+    fromName: process.env.MSG91_FROM_NAME || MSG91_EMAIL_DEFAULTS.fromName,
+    fromEmail: process.env.MSG91_EMAIL_FROM || MSG91_EMAIL_DEFAULTS.fromEmail,
+    domain: process.env.MSG91_EMAIL_DOMAIN || MSG91_EMAIL_DEFAULTS.domain,
     templateId: process.env.MSG91_EMAIL_TEMPLATE_ID || 'global_otp'
   };
 };
 
 const sendMsg91EmailRequest = (payload, authKey) => new Promise((resolve, reject) => {
-  console.warn('Sending MSG91 email request:', payload);
+  console.log("payload", payload);
   const request = https.request({
     method: 'POST',
     hostname: 'control.msg91.com',
@@ -119,6 +106,8 @@ const sendMsg91EmailRequest = (payload, authKey) => new Promise((resolve, reject
       'content-type': 'application/json'
     }
   }, (response) => {
+    console.log('request sent to msg91');
+    console.log("response", response);
     const chunks = [];
     response.on('data', (chunk) => chunks.push(chunk));
     response.on('end', () => {
@@ -159,34 +148,30 @@ const sendMsg91TemplateEmail = async ({
   if (!toEmail) {
     return { delivered: false, channel: 'msg91', reason: 'recipient_email_missing' };
   }
+  console.log("toEmail", toEmail);
+  console.log("recipientName", recipientName);
+  console.log("companyName", companyName);
+  console.log("templateId", templateId);
+  console.log("variables", variables);
 
-  // const config = getMsg91EmailConfig();
-  // if (!config) {
-  //   console.warn('MSG91 email skipped: MSG91_AUTH_KEY must be configured.');
-  //   return { delivered: false, channel: 'msg91', reason: 'msg91_not_configured' };
-  // }
-const data = {
-    authKey: process.env.MSG91_AUTH_KEY,
-    fromName: MSG91_EMAIL_DEFAULTS.fromName,
-    fromEmail: MSG91_EMAIL_DEFAULTS.fromEmail,
-    domain: MSG91_EMAIL_DEFAULTS.domain,
-    templateId: process.env.MSG91_EMAIL_TEMPLATE_ID || 'global_otp'
-  };
-  console.log('MSG91 email data:', data);
-  await sendMsg91EmailRequest({
+  const data = getMsg91EmailConfig();
+  console.log("data", data);
+  if (!data) {
+    return { delivered: false, channel: 'msg91', reason: 'msg91_not_configured' };
+  }
+  const providerResponse = await sendMsg91EmailRequest({
     recipients: [{
       to: [{ name: recipientName || toEmail, email: toEmail }],
-      variables: {
-        ...variables
-      }
+      variables: { ...variables }
     }],
     from: { name: companyName || data.fromName, email: data.fromEmail },
     domain: data.domain,
     template_id: templateId || data.templateId,
     validate_before_send: false
   }, data.authKey);
+  console.log("providerResponse", providerResponse);
 
-  return { delivered: true, channel: 'msg91', templateId: templateId || data.templateId };
+  return { delivered: true, channel: 'msg91', templateId: templateId || data.templateId, providerResponse };
 };
 
 const sendMemberWelcomeEmail = async ({ toEmail, memberName, gymName }) => {
@@ -198,7 +183,7 @@ const sendMemberWelcomeEmail = async ({ toEmail, memberName, gymName }) => {
     variables: {
       GYM_NAME: gymName || 'FitSaarthi'
     },
-    templateId: MSG91_EMAIL_DEFAULTS.welcomeTemplateId
+    templateId: process.env.MSG91_TEMPLATE_WELCOME
   });
 };
 
@@ -207,7 +192,7 @@ const sendEnrollmentInvitationEmail = async ({ toEmail, gymName, gymContact, enr
     toEmail,
     recipientName: 'New member',
     companyName: gymName,
-    templateId: ENROLLMENT_TEMPLATE_ID,
+    templateId: process.env.MSG91_TEMPLATE_ENROLLMENT,
     variables: {
       gym_name: gymName || 'FitSaarthi',
       registration_form_link: enrollmentUrl,

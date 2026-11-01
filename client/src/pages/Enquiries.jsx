@@ -102,11 +102,13 @@ const Enquiries = () => {
   };
 
   const sendFormEmail = async (enquiry) => {
+    console.log("enquiry", enquiry);
     if (!enquiry.email) {
       window.toast?.({ type: 'info', title: 'Email required', message: 'Add an email address before sending the enquiry form.' });
       return;
     }
     try {
+      console.log("enquiry._id", enquiry._id);
       await enquiryService.sendEmail(enquiry._id);
       window.toast?.({ type: 'success', title: 'Email sent', message: `Email sent to ${enquiry.email}.` });
     } catch (error) {
@@ -141,7 +143,7 @@ const Enquiries = () => {
     {
       key: 'action', label: 'Action', headerClassName: 'text-right', className: 'text-right', render: (item) => (
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={() => sendFormEmail(item)} title="Send enquiry email" aria-label={`Send enquiry email to ${item.name}`} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:border-lime-300 hover:bg-lime-50 hover:text-lime-700"><Mail size={16} /></button>
+          <button type="button" onClick={() => sendFormEmail(item)} title="Send follow-up email" aria-label={`Send follow-up email to ${item.name}`} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:border-lime-300 hover:bg-lime-50 hover:text-lime-700"><Mail size={16} /></button>
           <button type="button" onClick={() => openEditModal(item)} title="Edit enquiry" aria-label={`Edit ${item.name}`} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:border-lime-300 hover:bg-lime-50 hover:text-lime-700"><Edit size={16} /></button>
           <button type="button" onClick={() => setEnquiryToDelete(item)} title="Delete enquiry" aria-label={`Delete ${item.name}`} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"><Trash2 size={16} /></button>
         </div>
@@ -153,7 +155,7 @@ const Enquiries = () => {
 
   return <div className="space-y-6">
     <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-      <div><h1 className="text-3xl font-bold tracking-tight text-gray-900">Enquiries</h1><p className="mt-1 text-gray-600">Track prospects, follow-ups, and conversions.</p></div>
+      <div><h1 className="text-3xl font-bold tracking-tight text-gray-900">Enquiries & CRM</h1><p className="mt-1 text-gray-600">Track prospects, follow-ups, and conversions in one place.</p></div>
       <div className="flex flex-wrap gap-3">
         <button type="button" onClick={() => fetchEnquiries({ quiet: true })} className="btn-secondary !h-10 !w-10 !p-0" aria-label="Refresh enquiries" title="Refresh enquiries"><RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /></button>
         <button type="button" onClick={() => { setEditingEnquiry(null); setFormData(makeInitialForm()); setFormErrors({}); setShowModal(true); }} className="btn-primary"><Plus className="h-4 w-4" />Add New Enquiry</button>

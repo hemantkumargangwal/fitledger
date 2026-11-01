@@ -30,6 +30,19 @@ const gymSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  logoUrl: {
+    type: String,
+    trim: true
+  },
+  website: {
+    type: String,
+    trim: true
+  },
+  emailSignature: {
+    type: String,
+    trim: true,
+    maxlength: 500
+  },
   trialStartsAt: {
     type: Date,
     default: Date.now

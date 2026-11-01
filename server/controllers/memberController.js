@@ -2,9 +2,12 @@ const Member = require('../models/Member');
 const Enrollment = require('../models/Enrollment');
 const Payment = require('../models/Payment');
 const Gym = require('../models/Gym');
+const EmailLog = require('../models/EmailLog');
 const { createLog } = require('../services/activityService');
 const jwt = require('jsonwebtoken');
-const { sendMemberWelcomeEmail, sendEnrollmentInvitationEmail } = require('../services/emailService');
+const { sendEnrollmentInvitationEmail } = require('../services/emailService');
+const { sendMemberMessage } = require('../services/memberMessagingService');
+const { EMAIL_EVENTS, membershipPeriodKey, queueEmailEvent } = require('../services/emailAutomationService');
 
 const parseDate = (value) => (value ? new Date(value) : undefined);
 const cleanString = (value) => String(value || '').trim();
@@ -196,28 +199,9 @@ const addMember = async (req, res) => {
     await member.populate('gymId', 'gymName');
     await createLog(req.gymId, member._id, 'member_joined', `${member.name} joined the gym.`);
 
-    // Send the creation response first. MSG91 runs separately so a temporary
-    // email-provider failure never makes member creation fail in the UI.
     res.status(201).json({
       message: 'Member added successfully',
       member
-    });
-
-    setImmediate(() => {
-      console.log('Sending welcome email for member:', member);
-      sendMemberWelcomeEmail({
-        toEmail: member.email,
-        memberName: member.name,
-        gymName: member.gymId?.gymName
-      })
-        .then((result) => {
-          if (!result.delivered) {
-            console.warn(`Welcome email skipped for member ${member._id}: ${result.reason}`);
-          }
-        })
-        .catch((emailError) => {
-          console.error(`Welcome email failed for member ${member._id}:`, emailError.message);
-        });
     });
   } catch (error) {
     console.error('Add member error:', error);
@@ -419,6 +403,8 @@ const assignMembership = async (req, res) => {
       return res.status(404).json({ message: 'Member not found' });
     }
 
+    const previousPeriodKey = membershipPeriodKey(member);
+    const hasPreviousMembership = Boolean(member.membershipAssignment?.assignedAt);
     const startDate = parseDate(req.body.startDate) || new Date();
     const endDate = parseDate(req.body.endDate);
     const amountPaid = cleanNumber(req.body.amountPaid);
@@ -464,10 +450,23 @@ const assignMembership = async (req, res) => {
 
     await member.save();
 
-    if (amountPaid > 0) {
-      const payment = new Payment({
+    const currentPeriodKey = membershipPeriodKey(member);
+    if (hasPreviousMembership && previousPeriodKey !== currentPeriodKey) {
+      await EmailLog.updateMany({
         gymId: req.gymId,
         memberId: member._id,
+        membershipPeriodKey: previousPeriodKey,
+        eventType: { $in: [EMAIL_EVENTS.EXPIRY_7_DAYS, EMAIL_EVENTS.EXPIRY_3_DAYS, EMAIL_EVENTS.EXPIRY_TODAY] },
+        status: { $in: ['pending', 'failed'] }
+      }, { $set: { status: 'cancelled' } });
+    }
+
+    let payment;
+    if (amountPaid > 0) {
+      payment = new Payment({
+        gymId: req.gymId,
+        memberId: member._id,
+        membershipPeriodKey: currentPeriodKey,
         amount: amountPaid,
         paymentType: paymentMode,
         paymentDate: parseDate(req.body.invoiceDate) || new Date(),
@@ -477,6 +476,30 @@ const assignMembership = async (req, res) => {
     }
 
     await createLog(req.gymId, member._id, 'member_renewed', `Membership assigned. End date: ${endDate ? endDate.toISOString().slice(0, 10) : 'not set'}.`);
+
+    Gym.findById(req.gymId).lean().then((gym) => {
+      if (!gym) return;
+      const emailTasks = [queueEmailEvent({
+        eventType: hasPreviousMembership ? EMAIL_EVENTS.MEMBERSHIP_RENEWED : EMAIL_EVENTS.WELCOME,
+        gym,
+        member,
+        recipient: member,
+        dedupeKey: `${hasPreviousMembership ? EMAIL_EVENTS.MEMBERSHIP_RENEWED : EMAIL_EVENTS.WELCOME}:${member._id}:${currentPeriodKey}`,
+      })];
+      if (payment) {
+        const balanceDue = Math.max(totalAmountPayable - amountPaid, 0);
+        emailTasks.push(queueEmailEvent({
+          eventType: EMAIL_EVENTS.PAYMENT_RECEIPT,
+          gym,
+          member,
+          payment,
+          balanceDue,
+          recipient: member,
+          dedupeKey: `${EMAIL_EVENTS.PAYMENT_RECEIPT}:${payment._id}`,
+        }));
+      }
+      return Promise.all(emailTasks);
+    }).catch((error) => console.error('Queue membership email error:', error.message));
 
     res.json({ message: 'Membership assigned successfully', member });
   } catch (error) {
@@ -552,6 +575,33 @@ const bulkDeleteMembers = async (req, res) => {
   }
 };
 
+const sendBulkMemberMessage = async (req, res) => {
+  try {
+    const { channel, memberIds, audience = 'selected', message } = req.body;
+    const allowedChannels = ['email', 'sms', 'whatsapp'];
+    if (!allowedChannels.includes(channel)) return res.status(400).json({ message: 'Invalid message channel.' });
+    if (!cleanString(message) || cleanString(message).length > 1000) {
+      return res.status(400).json({ message: 'Message is required and must be 1,000 characters or fewer.' });
+    }
+    if (audience !== 'all' && (!Array.isArray(memberIds) || memberIds.length === 0)) {
+      return res.status(400).json({ message: 'Select at least one member.' });
+    }
+
+    const query = { gymId: req.gymId };
+    if (audience !== 'all') query._id = { $in: memberIds };
+    const members = await Member.find(query).select('name email phone').lean();
+    if (!members.length) return res.status(404).json({ message: 'No members found for this message.' });
+
+    const gym = await Gym.findById(req.gymId).select('gymName').lean();
+    const result = await sendMemberMessage({ channel, members, message: cleanString(message), gymName: gym?.gymName });
+    await createLog(req.gymId, null, 'member_bulk_message', `${channel} message sent to ${result.delivered} member(s).`);
+    return res.json({ message: `${channel === 'whatsapp' ? 'WhatsApp' : channel.toUpperCase()} message queued for ${result.delivered} member(s).`, result });
+  } catch (error) {
+    console.error('Bulk member message error:', error.message);
+    return res.status(502).json({ message: error.message || 'Member message could not be sent.' });
+  }
+};
+
 module.exports = {
   addMember,
   getMembers,
@@ -564,6 +614,7 @@ module.exports = {
   deleteMember,
   bulkUpdateMembers,
   bulkDeleteMembers,
+  sendBulkMemberMessage,
   syncMemberStatus,
   sendEnrollmentInvitation,
   getEnrollmentDetails,

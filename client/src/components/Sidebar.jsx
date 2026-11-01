@@ -11,8 +11,7 @@ const navGroups = [
       { to: '/workout-plans', icon: Dumbbell, label: 'Workout Plan' },
       { to: '/diet-plans', icon: Salad, label: 'Diet Plan' },
       { to: '/payments', icon: IndianRupee, label: 'Payments' },
-      { to: '/enquiries', icon: ClipboardList, label: 'Enquiries' },
-      { to: '/leads', icon: ClipboardList, label: 'Lead CRM' },
+      { to: '/enquiries', icon: ClipboardList, label: 'Enquiries & CRM' },
     ],
   },
   {

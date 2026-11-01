@@ -43,6 +43,9 @@ const publicUser = (user, gym = user.gymId) => ({
   ownerName: gym.ownerName,
   phone: gym.phone || '',
   address: gym.address || '',
+  logoUrl: gym.logoUrl || '',
+  website: gym.website || '',
+  emailSignature: gym.emailSignature || '',
   ...getTrialInfo(gym),
 });
 
@@ -120,7 +123,7 @@ const login = async (req, res) => {
 const getProfile = async (req, res) => res.json({ user: publicUser(req.user) });
 
 const updateProfile = async (req, res) => {
-  const { name, email, gymName, ownerName, phone, address } = req.body;
+  const { name, email, gymName, ownerName, phone, address, logoUrl, website, emailSignature } = req.body;
   const user = await User.findById(req.user.id).populate('gymId');
   if (!user || !user.gymId) throw new AppError('User not found', 404, 'USER_NOT_FOUND');
 
@@ -143,6 +146,16 @@ const updateProfile = async (req, res) => {
   user.gymId.phone = phone?.trim() || '';
   user.gymId.phoneNormalized = normalizePhone(phone);
   user.gymId.address = address?.trim() || '';
+  const normalizedLogoUrl = logoUrl?.trim() || '';
+  const normalizedWebsite = website?.trim() || '';
+  for (const [field, value] of [['logoUrl', normalizedLogoUrl], ['website', normalizedWebsite]]) {
+    if (value && !/^https?:\/\/[^\s]+$/i.test(value)) {
+      throw new AppError(`${field === 'logoUrl' ? 'Gym logo URL' : 'Website URL'} must be a valid http(s) URL.`, 422, 'INVALID_URL', [{ field, message: 'Enter a valid http(s) URL.' }]);
+    }
+  }
+  user.gymId.logoUrl = normalizedLogoUrl;
+  user.gymId.website = normalizedWebsite;
+  user.gymId.emailSignature = String(emailSignature || '').trim().slice(0, 500);
 
   await Promise.all([user.save(), user.gymId.save()]);
   return res.json({ message: 'Profile updated successfully', user: publicUser(user) });

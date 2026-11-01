@@ -1,6 +1,8 @@
 const Payment = require('../models/Payment');
 const Member = require('../models/Member');
+const Gym = require('../models/Gym');
 const { createLog } = require('../services/activityService');
+const { EMAIL_EVENTS, membershipPeriodKey, queueEmailEvent } = require('../services/emailAutomationService');
 
 const addPayment = async (req, res) => {
   try {
@@ -20,6 +22,7 @@ const addPayment = async (req, res) => {
     const payment = new Payment({
       gymId: req.gymId,
       memberId,
+      membershipPeriodKey: membershipPeriodKey(member),
       amount: parseFloat(amount),
       paymentType,
       ...(paymentDate && { paymentDate: new Date(paymentDate) }),
@@ -29,6 +32,25 @@ const addPayment = async (req, res) => {
     await payment.save();
     await payment.populate('memberId', 'name phone email');
     await createLog(req.gymId, memberId, 'payment_received', `Payment of ₹${payment.amount} received (${payment.paymentType}).`, { amount: payment.amount, paymentId: payment._id });
+
+    Gym.findById(req.gymId).lean().then(async (gym) => {
+      if (!gym) return;
+      const periodKey = membershipPeriodKey(member);
+      const totals = await Payment.aggregate([
+        { $match: { gymId: req.gymId, memberId: member._id, membershipPeriodKey: periodKey } },
+        { $group: { _id: null, paid: { $sum: '$amount' } } },
+      ]);
+      const balanceDue = Math.max(Number(member.membershipAssignment?.totalAmountPayable || 0) - Number(totals[0]?.paid || 0), 0);
+      return queueEmailEvent({
+        eventType: EMAIL_EVENTS.PAYMENT_RECEIPT,
+        gym,
+        member,
+        payment,
+        balanceDue,
+        recipient: member,
+        dedupeKey: `${EMAIL_EVENTS.PAYMENT_RECEIPT}:${payment._id}`,
+      });
+    }).catch((error) => console.error('Queue payment receipt email error:', error.message));
 
     res.status(201).json({
       message: 'Payment added successfully',

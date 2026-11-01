@@ -1,6 +1,6 @@
 const Enquiry = require('../models/Enquiry');
 const Gym = require('../models/Gym');
-const { sendMsg91TemplateEmail } = require('../services/emailService');
+const { EMAIL_EVENTS, queueEmailEvent, sendEmailEventNow } = require('../services/emailAutomationService');
 
 const cleanString = (value) => String(value || '').trim();
 const parseDate = (value) => (value ? new Date(value) : undefined);
@@ -26,7 +26,21 @@ const createEnquiry = async (req, res) => {
     if (!payload.name || !payload.mobile) {
       return res.status(400).json({ message: 'Name and mobile number are required' });
     }
-    const enquiry = await Enquiry.create({ gymId: req.gymId, ...payload });
+    const creationKey = cleanString(req.header('idempotency-key') || req.header('x-idempotency-key'));
+    if (creationKey) {
+      const existing = await Enquiry.findOne({ gymId: req.gymId, creationKey });
+      if (existing) return res.status(200).json({ message: 'Enquiry already added', enquiry: existing });
+    }
+    const enquiry = await Enquiry.create({ gymId: req.gymId, creationKey: creationKey || undefined, ...payload });
+    Gym.findById(req.gymId).lean()
+      .then((gym) => gym && queueEmailEvent({
+        eventType: EMAIL_EVENTS.ENQUIRY,
+        gym,
+        enquiry,
+        recipient: enquiry,
+        dedupeKey: `${EMAIL_EVENTS.ENQUIRY}:${enquiry._id}`,
+      }))
+      .catch((error) => console.error('Queue enquiry confirmation email error:', error.message));
     return res.status(201).json({ message: 'Enquiry added successfully', enquiry });
   } catch (error) {
     console.error('Create enquiry error:', error);
@@ -96,20 +110,19 @@ const sendEnquiryEmail = async (req, res) => {
     if (!enquiry) return res.status(404).json({ message: 'Enquiry not found' });
     if (!enquiry.email) return res.status(400).json({ message: 'This enquiry does not have an email address' });
 
-    const gym = await Gym.findById(req.gymId).select('gymName').lean();
-    const result = await sendMsg91TemplateEmail({
-      toEmail: enquiry.email,
-      recipientName: enquiry.name,
-      companyName: gym?.gymName,
-      templateId: req.body.templateId || process.env.MSG91_ENQUIRY_EMAIL_TEMPLATE_ID,
-      variables: {
-        enquiry_source: enquiry.source || '',
-        assigned_to: enquiry.assignedTo || ''
-      }
+    const gym = await Gym.findById(req.gymId).lean();
+    if (!gym) return res.status(404).json({ message: 'Gym not found' });
+    const result = await sendEmailEventNow({
+      eventType: EMAIL_EVENTS.ENQUIRY_FOLLOWUP,
+      gym,
+      enquiry,
+      recipient: enquiry,
+      dedupeKey: `${EMAIL_EVENTS.ENQUIRY_FOLLOWUP}:${enquiry._id}`,
     });
-
-    if (!result.delivered) return res.status(503).json({ message: 'MSG91 email is not configured', result });
-    return res.json({ message: 'Enquiry email sent successfully', result });
+    if (result.skipped) return res.status(400).json({ message: 'This enquiry does not have an email address' });
+    if (result.duplicate) return res.status(409).json({ message: 'A follow-up email has already been requested for this enquiry.' });
+    if (result.log.status !== 'sent') return res.status(502).json({ message: 'Enquiry follow-up email could not be sent.' });
+    return res.json({ message: 'Enquiry follow-up email sent successfully' });
   } catch (error) {
     console.error('Send enquiry email error:', error);
     return res.status(502).json({ message: 'Enquiry email could not be sent' });
