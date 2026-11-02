@@ -13,6 +13,7 @@ const dietPlanRoutes = require('./routes/dietPlans');
 const enquiryRoutes = require('./routes/enquiries');
 const leadRoutes = require('./routes/leads');
 const invoiceRoutes = require('./routes/invoices');
+const publicRoutes = require('./routes/public');
 const { getEnrollmentDetails, submitEnrollment } = require('./controllers/memberController');
 
 const DEFAULT_ORIGINS = [
@@ -52,7 +53,7 @@ const requestLogger = (req, res, next) => {
       level: 'info',
       requestId: req.requestId,
       method: req.method,
-      path: req.path,
+      path: req.path.includes('/public/shared-plans/') ? '/public/shared-plans/:shareToken' : req.path,
       status: res.statusCode,
       durationMs: Number(durationMs.toFixed(2)),
     }));
@@ -99,6 +100,8 @@ const createApp = () => {
   app.post('/api/enrollment', submitEnrollment);
   app.get('/api/v1/enrollment', getEnrollmentDetails);
   app.post('/api/v1/enrollment', submitEnrollment);
+  app.use('/api/public', publicRoutes);
+  app.use('/api/v1/public', publicRoutes);
 
   if (process.env.NODE_ENV !== 'test') app.use(requestLogger);
 

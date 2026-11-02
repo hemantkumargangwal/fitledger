@@ -4,7 +4,8 @@ const createPlanController = require('./planControllerFactory');
 module.exports = createPlanController({
   Model: WorkoutPlan,
   listKey: 'workoutPlans',
-  rowFields: ['day', 'exercise', 'sets', 'reps', 'rest'],
+  rowFields: ['day', 'exercise', 'sets', 'reps', 'rest', 'instructions'],
   singularLabel: 'Workout plan',
-  memberAssignmentField: 'plan'
+  memberAssignmentField: 'plan',
+  kind: 'workout'
 });

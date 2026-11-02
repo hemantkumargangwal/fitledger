@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, ClipboardList, Edit, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { Check, ClipboardList, Copy, Edit, Plus, RefreshCw, Search, Trash2, X } from 'lucide-react';
 import ConfirmDialog from '../components/ConfirmDialog';
 import DataTable from '../components/DataTable';
 import ModalForm from '../components/ModalForm';
@@ -12,6 +12,10 @@ const initialForm = (fields) => ({
   description: '',
   note: '',
   details: '',
+  category: '',
+  goal: '',
+  difficulty: '',
+  dietPreference: '',
   tableRows: [createEmptyRow(fields)],
 });
 
@@ -26,6 +30,10 @@ const formatDate = (value) => {
 
 const PlanManager = ({ config }) => {
   const [plans, setPlans] = useState([]);
+  const [defaultPlans, setDefaultPlans] = useState([]);
+  const [activeTab, setActiveTab] = useState('defaults');
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -41,8 +49,9 @@ const PlanManager = ({ config }) => {
     try {
       if (quiet) setRefreshing(true);
       else setLoading(true);
-      const data = await config.service.getPlans();
+      const [data, templates] = await Promise.all([config.service.getPlans(), config.service.getDefaultPlans()]);
       setPlans(data);
+      setDefaultPlans(templates);
     } catch (error) {
       console.error(`Error loading ${config.pluralLabel}:`, error);
       if (window.toast) {
@@ -88,6 +97,10 @@ const PlanManager = ({ config }) => {
       description: plan.description || '',
       note: plan.note || '',
       details: plan.details || '',
+      category: plan.category || '',
+      goal: plan.goal || '',
+      difficulty: plan.difficulty || '',
+      dietPreference: plan.dietPreference || '',
       tableRows: plan.tableRows?.length ? plan.tableRows : [createEmptyRow(config.rowFields)],
     });
     setFormErrors({});
@@ -141,6 +154,10 @@ const PlanManager = ({ config }) => {
       description: formData.description.trim(),
       note: formData.note.trim(),
       details: formData.details.trim(),
+      category: formData.category.trim(),
+      goal: formData.goal.trim(),
+      difficulty: formData.difficulty.trim(),
+      dietPreference: formData.dietPreference.trim(),
       tableRows: formData.tableRows,
     };
 
@@ -173,6 +190,28 @@ const PlanManager = ({ config }) => {
     } finally {
       setSubmitLoading(false);
     }
+  };
+
+  const cloneTemplate = async (template, customize = false) => {
+    try {
+      const response = await config.service.cloneDefaultPlan(template.templateCode);
+      await fetchPlans({ quiet: true });
+      window.toast?.({ type: 'success', title: response.existing ? 'Existing plan opened' : 'Plan added', message: `${template.name} is now in My Gym Plans.` });
+      if (customize) openEditModal(response.plan);
+      else setActiveTab('my-plans');
+    } catch (error) {
+      window.toast?.({ type: 'error', title: 'Could not add plan', message: error.response?.data?.message || 'Please try again.' });
+    }
+  };
+
+  const duplicatePlan = async (plan) => {
+    try { await config.service.duplicatePlan(plan._id); await fetchPlans({ quiet: true }); window.toast?.({ type: 'success', title: 'Plan duplicated', message: 'A separate editable copy was created.' }); }
+    catch (error) { window.toast?.({ type: 'error', title: 'Duplicate failed', message: error.response?.data?.message || 'Please try again.' }); }
+  };
+
+  const togglePlanStatus = async (plan) => {
+    try { await config.service.updatePlanStatus(plan._id, plan.isActive === false); await fetchPlans({ quiet: true }); }
+    catch (error) { window.toast?.({ type: 'error', title: 'Status update failed', message: error.response?.data?.message || 'Please try again.' }); }
   };
 
   const handleDeleteConfirm = async () => {
@@ -257,6 +296,8 @@ const PlanManager = ({ config }) => {
           >
             <Edit size={16} />
           </button>
+          <button type="button" onClick={() => duplicatePlan(plan)} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-lime-300 hover:bg-lime-50 hover:text-lime-700" aria-label={`Duplicate ${plan.name}`} title="Duplicate"><Copy size={16} /></button>
+          <button type="button" onClick={() => togglePlanStatus(plan)} className={`rounded-xl border px-2 text-xs font-bold ${plan.isActive === false ? 'border-slate-200 text-slate-500' : 'border-emerald-200 text-emerald-700'}`} title="Activate or deactivate">{plan.isActive === false ? 'Inactive' : 'Active'}</button>
           <button
             type="button"
             onClick={() => {
@@ -282,6 +323,9 @@ const PlanManager = ({ config }) => {
     );
   }
 
+  const categories = [...new Set(defaultPlans.map((plan) => plan.category).filter(Boolean))];
+  const shownDefaults = defaultPlans.filter((plan) => (category === 'all' || plan.category === category) && `${plan.name} ${plan.description} ${plan.difficulty || ''} ${plan.dietPreference || ''}`.toLowerCase().includes(query.toLowerCase()));
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -300,6 +344,14 @@ const PlanManager = ({ config }) => {
         </div>
       </div>
 
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div className="flex rounded-xl bg-slate-100 p-1">
+          <button type="button" onClick={() => setActiveTab('defaults')} className={`rounded-lg px-4 py-2 text-sm font-bold ${activeTab === 'defaults' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Default Plans</button>
+          <button type="button" onClick={() => setActiveTab('my-plans')} className={`rounded-lg px-4 py-2 text-sm font-bold ${activeTab === 'my-plans' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>My Gym Plans</button>
+        </div>
+        {activeTab === 'defaults' && <div className="flex flex-1 flex-col gap-2 sm:flex-row md:max-w-xl"><label className="relative flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="input pl-9" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search default plans" /></label><select className="input sm:w-44" value={category} onChange={(event) => setCategory(event.target.value)}><option value="all">All categories</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>}
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="card-gradient p-4">
           <p className="text-sm font-medium text-gray-600">Total Plans</p>
@@ -315,12 +367,15 @@ const PlanManager = ({ config }) => {
         </div>
       </div>
 
-      <DataTable
+      {activeTab === 'defaults' ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{shownDefaults.map((plan) => {
+        const saved = plans.find((item) => item.templateCode === plan.templateCode);
+        return <article key={plan.templateCode} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-extrabold uppercase tracking-wider text-lime-700">Default Template</p><h2 className="mt-1 font-extrabold text-slate-900">{plan.name}</h2></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{plan.difficulty || plan.dietPreference}</span></div><p className="mt-3 text-sm text-slate-600">{plan.description}</p><div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-500"><span>{plan.category}</span><span>•</span><span>{plan.tableRows?.length || 0} {config.route === 'diet-plans' ? 'meals' : 'exercises'}</span></div><div className="mt-5 flex gap-2"><button type="button" onClick={() => cloneTemplate(plan, true)} className="btn-secondary flex-1">{saved ? 'Customize' : 'Customize'}</button><button type="button" onClick={() => cloneTemplate(plan)} className="btn-primary flex-1">{saved ? 'Open My Plan' : 'Add to My Plans'}</button></div></article>;
+      })}{!shownDefaults.length && <p className="col-span-full py-10 text-center text-sm text-slate-500">No default plans match these filters.</p>}</div> : <DataTable
         columns={columns}
         data={plans}
         keyField="_id"
         emptyMessage={`No ${config.pluralLabel.toLowerCase()} found. Add your first plan.`}
-      />
+      />}
 
       <ModalForm
         isOpen={showModal}
@@ -344,6 +399,12 @@ const PlanManager = ({ config }) => {
                   placeholder={config.namePlaceholder}
                 />
                 {formErrors.name && <p className="mt-1 text-xs font-medium text-red-600">{formErrors.name}</p>}
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Category</label><input className="input" value={formData.category || ''} onChange={(event) => setFormData((data) => ({ ...data, category: event.target.value }))} placeholder="General Fitness" /></div>
+                <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Goal</label><input className="input" value={formData.goal || ''} onChange={(event) => setFormData((data) => ({ ...data, goal: event.target.value }))} placeholder="Member goal" /></div>
+                {config.route === 'workout-plans' ? <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Difficulty</label><select className="input" value={formData.difficulty || ''} onChange={(event) => setFormData((data) => ({ ...data, difficulty: event.target.value }))}><option value="">Select difficulty</option><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div> : <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Diet preference</label><select className="input" value={formData.dietPreference || ''} onChange={(event) => setFormData((data) => ({ ...data, dietPreference: event.target.value }))}><option value="">Select preference</option><option>Vegetarian</option><option>Non-Vegetarian</option><option>Vegan</option></select></div>}
               </div>
 
               <div>

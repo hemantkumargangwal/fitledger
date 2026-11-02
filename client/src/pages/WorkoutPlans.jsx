@@ -24,6 +24,7 @@ const WorkoutPlans = () => (
         { key: 'sets', label: 'Sets', placeholder: '3' },
         { key: 'reps', label: 'Reps', placeholder: '12' },
         { key: 'rest', label: 'Rest', placeholder: '60 sec' },
+        { key: 'instructions', label: 'Instructions', placeholder: 'Keep a controlled tempo' },
       ],
     }}
   />

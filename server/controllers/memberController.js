@@ -8,6 +8,8 @@ const jwt = require('jsonwebtoken');
 const { sendEnrollmentInvitationEmail } = require('../services/emailService');
 const { sendMemberMessage } = require('../services/memberMessagingService');
 const { EMAIL_EVENTS, membershipPeriodKey, queueEmailEvent } = require('../services/emailAutomationService');
+const { createOrReusePlanShare, revokePlanShares, sendPlanShareEmail } = require('../services/planShareService');
+const { cleanMappings, createSession, getSession, payloadFromRecord, reviewRows } = require('../services/memberImportService');
 
 const parseDate = (value) => (value ? new Date(value) : undefined);
 const cleanString = (value) => String(value || '').trim();
@@ -50,6 +52,88 @@ const buildMemberCode = async (gymId) => {
     .toLowerCase() || 'fit';
   const count = await Member.countDocuments({ gymId });
   return `${prefix}${count + 1}`;
+};
+
+const importReviewResponse = async (session, gymId, mappings) => {
+  const safeMappings = cleanMappings(session.headers, mappings || session.mappings);
+  const existingMembers = await Member.find({ gymId }).select('name phone').lean();
+  const review = await reviewRows({ rows: session.rows, mappings: safeMappings, existingMembers });
+  return {
+    importId: session.importId,
+    expiresAt: new Date(session.expiresAt).toISOString(),
+    headers: session.headers,
+    mappedFields: safeMappings,
+    supportedFields: require('../services/memberImportService').supportedFields,
+    ignoredColumns: session.headers.filter((header) => !safeMappings[header]),
+    summary: review.summary,
+    rows: review.rows.map((row) => ({ rowNumber: row.rowNumber, name: row.values.name || '', phone: row.values.phone || '', errors: row.errors, duplicate: row.duplicate || null })),
+  };
+};
+
+const previewMemberImport = async (req, res) => {
+  const session = createSession({ gymId: req.gymId, userId: req.user._id, file: req.file });
+  const preview = await importReviewResponse(session, req.gymId, session.mappings);
+  res.status(201).json(preview);
+};
+
+const reviewMemberImport = async (req, res) => {
+  const session = getSession({ importId: req.body.importId, gymId: req.gymId, userId: req.user._id });
+  const preview = await importReviewResponse(session, req.gymId, req.body.mappings);
+  res.json(preview);
+};
+
+const commitMemberImport = async (req, res) => {
+  const session = getSession({ importId: req.body.importId, gymId: req.gymId, userId: req.user._id });
+  if (session.committed) return res.json(session.committed);
+  const mappings = cleanMappings(session.headers, req.body.mappings);
+  const existingMembers = await Member.find({ gymId: req.gymId }).select('_id name phone').lean();
+  const review = await reviewRows({ rows: session.rows, mappings, existingMembers });
+  const duplicateActions = req.body.duplicateActions && typeof req.body.duplicateActions === 'object' ? req.body.duplicateActions : {};
+  const toCreate = [];
+  const updates = [];
+  const details = [];
+  const seen = new Set();
+
+  for (const row of review.rows) {
+    if (row.errors.length) { details.push({ rowNumber: row.rowNumber, status: 'skipped', reason: row.errors.join(', ') }); continue; }
+    if (row.duplicate?.type === 'file') { details.push({ rowNumber: row.rowNumber, status: 'skipped', reason: 'Duplicate mobile number in this file' }); continue; }
+    if (row.duplicate?.type === 'existing') {
+      if (duplicateActions[String(row.rowNumber)] !== 'update') {
+        details.push({ rowNumber: row.rowNumber, status: 'skipped', reason: 'Existing member requires confirmation before updating' });
+        continue;
+      }
+      updates.push(row);
+      continue;
+    }
+    if (seen.has(row.phone)) { details.push({ rowNumber: row.rowNumber, status: 'skipped', reason: 'Duplicate mobile number in this file' }); continue; }
+    seen.add(row.phone);
+    toCreate.push(row);
+  }
+
+  let created = 0; let updated = 0; let failed = 0;
+  for (let index = 0; index < toCreate.length; index += 100) {
+    const batch = toCreate.slice(index, index + 100);
+    try {
+      await Member.insertMany(batch.map((row) => ({ gymId: req.gymId, ...payloadFromRecord(row), phoneNormalized: row.phone, status: 'inactive' })), { ordered: true });
+      created += batch.length;
+      batch.forEach((row) => details.push({ rowNumber: row.rowNumber, status: 'created' }));
+    } catch (error) {
+      failed += batch.length;
+      batch.forEach((row) => details.push({ rowNumber: row.rowNumber, status: 'failed', reason: 'This row could not be imported' }));
+      console.error('Member import batch error:', error.message);
+    }
+  }
+  for (const row of updates) {
+    try {
+      const payload = payloadFromRecord(row);
+      await Member.updateOne({ _id: row.duplicate.member.id, gymId: req.gymId }, { $set: { ...payload, phoneNormalized: row.phone } }, { runValidators: true });
+      updated += 1;
+      details.push({ rowNumber: row.rowNumber, status: 'updated' });
+    } catch (_error) { failed += 1; details.push({ rowNumber: row.rowNumber, status: 'failed', reason: 'Existing member could not be updated' }); }
+  }
+  const result = { message: 'Member import completed', created, updated, skipped: details.filter((item) => item.status === 'skipped').length, failed, details: details.sort((a, b) => a.rowNumber - b.rowNumber) };
+  session.committed = result;
+  return res.json(result);
 };
 
 const getEnrollmentToken = (gymId) => jwt.sign(
@@ -477,6 +561,14 @@ const assignMembership = async (req, res) => {
 
     await createLog(req.gymId, member._id, 'member_renewed', `Membership assigned. End date: ${endDate ? endDate.toISOString().slice(0, 10) : 'not set'}.`);
 
+    let planShare;
+    try {
+      planShare = await createOrReusePlanShare({ gymId: req.gymId, member, expiresInDays: req.body.planShareExpiresInDays });
+      if (!planShare) await revokePlanShares(req.gymId, member._id);
+    } catch (error) {
+      console.error('Create plan share error:', error.message);
+    }
+
     Gym.findById(req.gymId).lean().then((gym) => {
       if (!gym) return;
       const emailTasks = [queueEmailEvent({
@@ -498,10 +590,13 @@ const assignMembership = async (req, res) => {
           dedupeKey: `${EMAIL_EVENTS.PAYMENT_RECEIPT}:${payment._id}`,
         }));
       }
+      if (planShare?.created && planShare.url) {
+        emailTasks.push(sendPlanShareEmail({ share: planShare.share, url: planShare.url, gym, member }));
+      }
       return Promise.all(emailTasks);
     }).catch((error) => console.error('Queue membership email error:', error.message));
 
-    res.json({ message: 'Membership assigned successfully', member });
+    res.json({ message: 'Membership assigned successfully', member, planShare: planShare?.url ? { url: planShare.url, expiresAt: planShare.share.expiresAt } : null });
   } catch (error) {
     console.error('Assign membership error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -621,5 +716,8 @@ module.exports = {
   submitEnrollment,
   getPendingEnrollments,
   approveEnrollment,
-  rejectEnrollment
+  rejectEnrollment,
+  previewMemberImport,
+  reviewMemberImport,
+  commitMemberImport
 };

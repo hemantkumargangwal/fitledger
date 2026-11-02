@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Edit, Mail, MessageCircle, Plus, RefreshCw, Search, Send, Smartphone, Trash2, UserPlus, X } from 'lucide-react';
+import { Check, Edit, Mail, MessageCircle, Plus, RefreshCw, Search, Send, Smartphone, Trash2, Upload, UserPlus, X } from 'lucide-react';
 import ConfirmDialog from '../components/ConfirmDialog';
 import DataTable from '../components/DataTable';
 import ModalForm from '../components/ModalForm';
 import Spinner from '../components/Spinner';
 import { memberService } from '../services/memberService';
+import MemberImportModal from '../components/MemberImportModal';
 
 const initialForm = {
   name: '',
@@ -69,6 +70,7 @@ const Members = () => {
   const [messageBody, setMessageBody] = useState('');
   const [messageError, setMessageError] = useState('');
   const [messageLoading, setMessageLoading] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const fetchMembers = async ({ quiet = false } = {}) => {
     try {
@@ -411,6 +413,10 @@ const Members = () => {
             <Send className="h-4 w-4" />
             Share Enrollment Form
           </button>
+          <button type="button" onClick={() => setShowImportModal(true)} className="btn-secondary">
+            <Upload className="h-4 w-4" />
+            Import Members
+          </button>
           <button type="button" onClick={openAddModal} className="btn-primary">
             <Plus className="h-4 w-4" />
             Add New Member
@@ -461,6 +467,8 @@ const Members = () => {
       )}
 
       <DataTable columns={columns} data={visibleMembers} keyField="_id" emptyMessage="No members found." />
+
+      <MemberImportModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} onComplete={() => fetchMembers({ quiet: true })} />
 
       <ModalForm
         isOpen={showModal}

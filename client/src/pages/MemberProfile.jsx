@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Check, History, Mail, Phone, RefreshCw, User, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Check, Copy, History, Mail, Phone, RefreshCw, Share2, User, X } from 'lucide-react';
 import ModalForm from '../components/ModalForm';
 import Spinner from '../components/Spinner';
 import { memberService } from '../services/memberService';
@@ -8,6 +8,7 @@ import { membershipService } from '../services/membershipService';
 import { dietPlanService, workoutPlanService } from '../services/planService';
 import { formatCurrency } from '../utils/formatters';
 import MandatePanel from '../components/MandatePanel';
+import { planShareService } from '../services/planShareService';
 
 const formatDate = (value) => {
   if (!value) return '-';
@@ -77,6 +78,8 @@ const MemberProfile = () => {
   const [renewalData, setRenewalData] = useState(emptyRenewal);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [planShare, setPlanShare] = useState(null);
+  const [planShareUrl, setPlanShareUrl] = useState('');
 
   const loadProfile = async () => {
     if (!id) return;
@@ -95,6 +98,7 @@ const MemberProfile = () => {
       setMemberships(membershipRes.memberships || []);
       setWorkoutPlans(workoutRes || []);
       setDietPlans(dietRes || []);
+      planShareService.getForMember(id).then((result) => setPlanShare(result.share)).catch(() => setPlanShare(null));
     } catch {
       setError('Member not found.');
     } finally {
@@ -174,7 +178,8 @@ const MemberProfile = () => {
     event.preventDefault();
     setSaving(true);
     try {
-      await memberService.assignMembership(id, renewalData);
+      const response = await memberService.assignMembership(id, renewalData);
+      if (response.planShare?.url) setPlanShareUrl(response.planShare.url);
       setShowRenewal(false);
       await loadProfile();
     } catch (saveError) {
@@ -190,6 +195,25 @@ const MemberProfile = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const regeneratePlanShare = async () => {
+    try {
+      const response = await planShareService.regenerate(id);
+      setPlanShareUrl(response.share.url); setPlanShare({ isActive: true, expiresAt: response.share.expiresAt });
+      window.toast?.({ type: 'success', title: 'Sharing link created', message: 'The plan link is ready to copy.' });
+    } catch (shareError) { window.toast?.({ type: 'error', title: 'Link unavailable', message: shareError.response?.data?.message || 'Assign a saved workout or diet plan first.' }); }
+  };
+
+  const revokePlanShare = async () => {
+    try { await planShareService.revoke(id); setPlanShare(null); setPlanShareUrl(''); window.toast?.({ type: 'success', title: 'Link revoked', message: 'The member can no longer open this shared plan.' }); }
+    catch { window.toast?.({ type: 'error', title: 'Revoke failed', message: 'Please try again.' }); }
+  };
+
+  const copyPlanShare = async () => {
+    if (!planShareUrl) return;
+    await navigator.clipboard?.writeText(planShareUrl);
+    window.toast?.({ type: 'success', title: 'Link copied', message: 'Ready to share with the member.' });
   };
 
   if (loading) {
@@ -295,6 +319,12 @@ const MemberProfile = () => {
             }).map(([label, value]) => <Info key={label} label={label} value={value || '-'} />)}
           </dl>
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><h2 className="text-lg font-bold text-slate-900">Public fitness-plan link</h2><p className="mt-1 text-sm text-slate-500">Shares only the selected workout and diet plans—never contact, payment, or profile details.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={regeneratePlanShare} className="btn-primary"><Share2 className="h-4 w-4" />{planShare ? 'Regenerate link' : 'Create link'}</button>{planShare && <button type="button" onClick={revokePlanShare} className="btn-secondary !border-red-200 !text-red-700">Revoke</button>}</div></div>
+        {planShareUrl && <div className="mt-4 flex flex-col gap-2 rounded-xl bg-slate-50 p-3 sm:flex-row"><input className="input flex-1 bg-white" value={planShareUrl} readOnly aria-label="Shared plan URL" /><button type="button" onClick={copyPlanShare} className="btn-secondary"><Copy className="h-4 w-4" />Copy</button></div>}
+        {planShare && !planShareUrl && <p className="mt-3 text-sm text-slate-500">An active link expires {formatDate(planShare.expiresAt)}. Regenerate it to obtain a new copyable URL.</p>}
       </section>
 
       <MandatePanel memberId={member._id} />

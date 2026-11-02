@@ -24,6 +24,8 @@ const DietPlans = () => (
         { key: 'food', label: 'Food', placeholder: 'Oats + banana' },
         { key: 'quantity', label: 'Quantity', placeholder: '1 bowl' },
         { key: 'calories', label: 'Calories', placeholder: '350' },
+        { key: 'protein', label: 'Protein', placeholder: '15 g' },
+        { key: 'instructions', label: 'Instructions', placeholder: 'Adjust portion if needed' },
       ],
     }}
   />

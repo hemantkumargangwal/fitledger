@@ -25,6 +25,7 @@ const MemberProfile = lazy(() => import('./pages/MemberProfile'));
 const Enquiries = lazy(() => import('./pages/Enquiries'));
 const EnrollmentForm = lazy(() => import('./pages/EnrollmentForm'));
 const Billing = lazy(() => import('./pages/Billing'));
+const SharedPlan = lazy(() => import('./pages/SharedPlan'));
 
 const AppFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-600" role="status">
@@ -45,6 +46,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/enroll" element={<EnrollmentForm />} />
+          <Route path="/shared-plan/:shareToken" element={<SharedPlan />} />
           {import.meta.env.DEV && (
             <Route element={<DashboardLayout />}>
               <Route path="preview/dashboard" element={<Dashboard />} />

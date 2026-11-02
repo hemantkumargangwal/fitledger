@@ -5,7 +5,9 @@ const dietRowSchema = new mongoose.Schema({
   meal: { type: String, trim: true },
   food: { type: String, trim: true },
   quantity: { type: String, trim: true },
-  calories: { type: String, trim: true }
+  calories: { type: String, trim: true },
+  protein: { type: String, trim: true },
+  instructions: { type: String, trim: true }
 }, { _id: false });
 
 const dietPlanSchema = new mongoose.Schema({
@@ -31,6 +33,12 @@ const dietPlanSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  category: { type: String, trim: true },
+  goal: { type: String, trim: true },
+  dietPreference: { type: String, trim: true },
+  templateCode: { type: String, trim: true },
+  isCustomized: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true },
   tableRows: {
     type: [dietRowSchema],
     default: []
@@ -46,6 +54,7 @@ const dietPlanSchema = new mongoose.Schema({
 });
 
 dietPlanSchema.index({ gymId: 1, name: 1 }, { unique: true });
+dietPlanSchema.index({ gymId: 1, templateCode: 1 }, { unique: true, sparse: true });
 
 dietPlanSchema.pre('save', function(next) {
   this.updatedAt = new Date();

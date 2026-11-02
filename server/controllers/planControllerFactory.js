@@ -1,3 +1,6 @@
+const SystemPlanTemplate = require('../models/SystemPlanTemplate');
+const Member = require('../models/Member');
+
 const buildPlanPayload = (body, rowFields) => {
   const name = String(body.name || '').trim();
   const description = String(body.description || '').trim();
@@ -13,6 +16,10 @@ const buildPlanPayload = (body, rowFields) => {
       description,
       note,
       details,
+      category: String(body.category || '').trim(),
+      goal: String(body.goal || '').trim(),
+      difficulty: String(body.difficulty || '').trim(),
+      dietPreference: String(body.dietPreference || '').trim(),
       tableRows: tableRows
         .map((row) => rowFields.reduce((cleanRow, field) => ({
           ...cleanRow,
@@ -23,7 +30,7 @@ const buildPlanPayload = (body, rowFields) => {
   };
 };
 
-const createPlanController = ({ Model, listKey, rowFields, singularLabel, memberAssignmentField }) => {
+const createPlanController = ({ Model, listKey, rowFields, singularLabel, memberAssignmentField, kind }) => {
   const getPlans = async (req, res) => {
     try {
       const [plans, assignments] = await Promise.all([
@@ -43,6 +50,16 @@ const createPlanController = ({ Model, listKey, rowFields, singularLabel, member
       });
     } catch (error) {
       console.error(`Get ${listKey} error:`, error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  };
+
+  const getDefaultPlans = async (_req, res) => {
+    try {
+      const templates = await SystemPlanTemplate.find({ kind }).sort({ category: 1, name: 1 }).lean();
+      res.json({ templates });
+    } catch (error) {
+      console.error(`Get default ${listKey} error:`, error);
       res.status(500).json({ message: 'Server error' });
     }
   };
@@ -74,7 +91,7 @@ const createPlanController = ({ Model, listKey, rowFields, singularLabel, member
 
       const plan = await Model.findOneAndUpdate(
         { _id: req.params.id, gymId: req.gymId },
-        { ...payload.data, updatedAt: new Date() },
+        { ...payload.data, isCustomized: true, updatedAt: new Date() },
         { new: true, runValidators: true }
       );
 
@@ -89,6 +106,53 @@ const createPlanController = ({ Model, listKey, rowFields, singularLabel, member
       }
       console.error(`Update ${singularLabel} error:`, error);
       res.status(500).json({ message: 'Server error' });
+    }
+  };
+
+  const cloneDefaultPlan = async (req, res) => {
+    try {
+      const template = await SystemPlanTemplate.findOne({ kind, templateCode: req.params.templateCode }).lean();
+      if (!template) return res.status(404).json({ message: 'Default template not found' });
+      const existing = await Model.findOne({ gymId: req.gymId, templateCode: template.templateCode });
+      if (existing) return res.json({ message: 'Existing customized plan returned', plan: existing, existing: true });
+      const plan = await Model.create({ gymId: req.gymId, templateCode: template.templateCode, isCustomized: false, isActive: true, name: template.name, description: template.description, note: template.note, details: template.details, category: template.category, goal: template.goal, difficulty: template.difficulty, dietPreference: template.dietPreference, tableRows: template.tableRows });
+      return res.status(201).json({ message: `${singularLabel} added to your plans`, plan });
+    } catch (error) {
+      if (error.code === 11000) {
+        const plan = await Model.findOne({ gymId: req.gymId, templateCode: req.params.templateCode });
+        return res.json({ message: 'Existing customized plan returned', plan, existing: true });
+      }
+      console.error(`Clone default ${singularLabel} error:`, error);
+      return res.status(500).json({ message: 'Server error' });
+    }
+  };
+
+  const duplicatePlan = async (req, res) => {
+    try {
+      const source = await Model.findOne({ _id: req.params.id, gymId: req.gymId }).lean();
+      if (!source) return res.status(404).json({ message: `${singularLabel} not found` });
+      const baseName = `${source.name} Copy`;
+      let name = baseName;
+      let suffix = 2;
+      while (await Model.exists({ gymId: req.gymId, name })) { name = `${baseName} ${suffix}`; suffix += 1; }
+      const { _id, createdAt, updatedAt, templateCode, ...copy } = source;
+      const plan = await Model.create({ ...copy, name, gymId: req.gymId, isCustomized: true, isActive: source.isActive !== false });
+      return res.status(201).json({ message: `${singularLabel} duplicated successfully`, plan });
+    } catch (error) {
+      console.error(`Duplicate ${singularLabel} error:`, error);
+      return res.status(500).json({ message: 'Server error' });
+    }
+  };
+
+  const updatePlanStatus = async (req, res) => {
+    try {
+      if (typeof req.body.isActive !== 'boolean') return res.status(400).json({ message: 'isActive must be true or false' });
+      const plan = await Model.findOneAndUpdate({ _id: req.params.id, gymId: req.gymId }, { isActive: req.body.isActive, updatedAt: new Date() }, { new: true });
+      if (!plan) return res.status(404).json({ message: `${singularLabel} not found` });
+      return res.json({ message: `${singularLabel} status updated`, plan });
+    } catch (error) {
+      console.error(`Update ${singularLabel} status error:`, error);
+      return res.status(500).json({ message: 'Server error' });
     }
   };
 
@@ -109,11 +173,14 @@ const createPlanController = ({ Model, listKey, rowFields, singularLabel, member
 
   return {
     getPlans,
+    getDefaultPlans,
     createPlan,
     updatePlan,
-    deletePlan
+    deletePlan,
+    cloneDefaultPlan,
+    duplicatePlan,
+    updatePlanStatus
   };
 };
 
 module.exports = createPlanController;
-const Member = require('../models/Member');

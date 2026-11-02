@@ -58,6 +58,13 @@ const memberSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  // Used by imports and duplicate checks. Existing records remain supported
+  // even if they predate this field.
+  phoneNormalized: {
+    type: String,
+    trim: true,
+    index: true
+  },
   gender: {
     type: String,
     enum: ['male', 'female', 'other', ''],
@@ -123,9 +130,11 @@ const memberSchema = new mongoose.Schema({
 });
 
 memberSchema.index({ gymId: 1, memberCode: 1 }, { unique: true, sparse: true });
+memberSchema.index({ gymId: 1, phoneNormalized: 1 });
 
 // Calculate expiry date before saving
 memberSchema.pre('save', function(next) {
+  if (this.isModified('phone')) this.phoneNormalized = String(this.phone || '').replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
   if ((this.isModified('planDuration') || this.isModified('joiningDate')) && this.planDuration > 0) {
     const expiryDate = new Date(this.joiningDate);
     expiryDate.setMonth(expiryDate.getMonth() + this.planDuration);

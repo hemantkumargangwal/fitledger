@@ -114,4 +114,21 @@ export const memberService = {
     const response = await api.post('/members/bulk-message', { channel, audience, memberIds, message });
     return response.data;
   },
+
+  previewImport: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/members/import/preview', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return response.data;
+  },
+
+  reviewImport: async ({ importId, mappings }) => {
+    const response = await api.post('/members/import/review', { importId, mappings });
+    return response.data;
+  },
+
+  commitImport: async ({ importId, mappings, duplicateActions }) => {
+    const response = await api.post('/members/import/commit', { importId, mappings, duplicateActions });
+    return response.data;
+  },
 };

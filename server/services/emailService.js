@@ -88,14 +88,13 @@ const getMsg91EmailConfig = () => {
   return {
     authKey: process.env.MSG91_AUTH_KEY,
     fromName: process.env.MSG91_FROM_NAME || MSG91_EMAIL_DEFAULTS.fromName,
-    fromEmail: process.env.MSG91_EMAIL_FROM || MSG91_EMAIL_DEFAULTS.fromEmail,
-    domain: process.env.MSG91_EMAIL_DOMAIN || MSG91_EMAIL_DEFAULTS.domain,
+    fromEmail: process.env.MSG91_FROM_EMAIL || process.env.MSG91_EMAIL_FROM || MSG91_EMAIL_DEFAULTS.fromEmail,
+    domain: process.env.MSG91_DOMAIN || process.env.MSG91_EMAIL_DOMAIN || MSG91_EMAIL_DEFAULTS.domain,
     templateId: process.env.MSG91_EMAIL_TEMPLATE_ID || 'global_otp'
   };
 };
 
 const sendMsg91EmailRequest = (payload, authKey) => new Promise((resolve, reject) => {
-  console.log("payload", payload);
   const request = https.request({
     method: 'POST',
     hostname: 'control.msg91.com',
@@ -106,8 +105,6 @@ const sendMsg91EmailRequest = (payload, authKey) => new Promise((resolve, reject
       'content-type': 'application/json'
     }
   }, (response) => {
-    console.log('request sent to msg91');
-    console.log("response", response);
     const chunks = [];
     response.on('data', (chunk) => chunks.push(chunk));
     response.on('end', () => {
@@ -148,14 +145,7 @@ const sendMsg91TemplateEmail = async ({
   if (!toEmail) {
     return { delivered: false, channel: 'msg91', reason: 'recipient_email_missing' };
   }
-  console.log("toEmail", toEmail);
-  console.log("recipientName", recipientName);
-  console.log("companyName", companyName);
-  console.log("templateId", templateId);
-  console.log("variables", variables);
-
   const data = getMsg91EmailConfig();
-  console.log("data", data);
   if (!data) {
     return { delivered: false, channel: 'msg91', reason: 'msg91_not_configured' };
   }
@@ -169,8 +159,6 @@ const sendMsg91TemplateEmail = async ({
     template_id: templateId || data.templateId,
     validate_before_send: false
   }, data.authKey);
-  console.log("providerResponse", providerResponse);
-
   return { delivered: true, channel: 'msg91', templateId: templateId || data.templateId, providerResponse };
 };
 

@@ -61,7 +61,6 @@ const createAttempt = async ({ eventType, gym, recipient, member, enquiry, payme
     variables: buildVariables({ gym, member, enquiry, payment, balanceDue }),
     dedupeKey,
   };
-  console.log("logData", logData);
   try {
     return { log: await EmailLog.create(logData), created: true };
   } catch (error) {

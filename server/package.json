@@ -7,6 +7,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "node --test test/*.test.js",
+    "seed:default-plans": "node scripts/seedDefaultPlans.js",
     "test:watch": "node --test --watch test/*.test.js"
   },
   "dependencies": {
@@ -16,8 +17,10 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.8.9",
+    "multer": "^2.5.0",
     "nodemailer": "^6.10.1",
-    "validator": "^13.11.0"
+    "validator": "^13.11.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

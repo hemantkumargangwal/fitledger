@@ -5,7 +5,8 @@ const planRowSchema = new mongoose.Schema({
   exercise: { type: String, trim: true },
   sets: { type: String, trim: true },
   reps: { type: String, trim: true },
-  rest: { type: String, trim: true }
+  rest: { type: String, trim: true },
+  instructions: { type: String, trim: true }
 }, { _id: false });
 
 const workoutPlanSchema = new mongoose.Schema({
@@ -31,6 +32,12 @@ const workoutPlanSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  category: { type: String, trim: true },
+  goal: { type: String, trim: true },
+  difficulty: { type: String, trim: true },
+  templateCode: { type: String, trim: true },
+  isCustomized: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true },
   tableRows: {
     type: [planRowSchema],
     default: []
@@ -46,6 +53,7 @@ const workoutPlanSchema = new mongoose.Schema({
 });
 
 workoutPlanSchema.index({ gymId: 1, name: 1 }, { unique: true });
+workoutPlanSchema.index({ gymId: 1, templateCode: 1 }, { unique: true, sparse: true });
 
 workoutPlanSchema.pre('save', function(next) {
   this.updatedAt = new Date();
